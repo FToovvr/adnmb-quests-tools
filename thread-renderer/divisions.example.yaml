@@ -218,6 +218,9 @@ divisions:
                 children:
                   - title: 「PO之音」
                     only: 28577041
+                    post-rules:
+                      28577041:
+                        expand-quote-links: true
               - title: 【肖自在寝室的动静】
                 until:
                   id: 28579740

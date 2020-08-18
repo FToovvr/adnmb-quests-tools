@@ -20,7 +20,7 @@ class DivisionsConfiguration:
     defaults: "DivisionsConfiguration.Defaults"
     divisionRules: List["DivisionRule"]
 
-    @dataclass
+    @dataclass(frozen=True)
     class Defaults:
         expand_quote_links: bool
 
@@ -63,6 +63,7 @@ class DivisionRule:
     intro: Optional[str] = None
     match_rule: Union[DivisionRule.MatchUntil,
                       DivisionRule.MatchOnly, None] = None
+    post_rules: Optional[Dict[int, DivisionRule.PostRule]] = None
     children: Optional[List[DivisionRule]] = None
 
     @dataclass(frozen=True)
@@ -74,6 +75,18 @@ class DivisionRule:
     @dataclass(frozen=True)
     class MatchOnly:
         ids: [int]
+
+    @dataclass(frozen=True)
+    class PostRule:
+        expand_quote_links: Optional[Union[bool, List[int]]]
+
+        @staticmethod
+        def load_from_object(obj: Optional[Dict[str, Any]]) -> DivisionRule.PostRule:
+            obj = obj or dict()
+
+            return DivisionRule.PostRule(
+                expand_quote_links=obj.get("expand-quote-links", None),
+            )
 
     @staticmethod
     def load_from_object(obj: Dict[Any]) -> DivisionRule:
@@ -115,6 +128,11 @@ class DivisionRule:
             else:  # List[int]
                 match_rule = DivisionRule.MatchOnly(ids=only)
 
+        post_rules = obj.get("post-rules", None)
+        if post_rules != None:
+            post_rules = dict((id, DivisionRule.PostRule.load_from_object(
+                rule_obj)) for (id, rule_obj) in post_rules.items())
+
         children = obj.get("children", list())
 
         return DivisionRule(
@@ -122,6 +140,7 @@ class DivisionRule:
             divisionType=divisionType,
             intro=intro,
             match_rule=match_rule,
+            post_rules=post_rules,
             children=list(map(lambda c: DivisionRule.load_from_object(c),
                               children))
         )

@@ -43,7 +43,7 @@ def generate_outputs(
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class OutputFile:
     title: str
 
@@ -94,40 +94,52 @@ def generate_markdown_outputs(
 
     self_output = ""
     is_leftover = rule.match_rule == None and is_last_part and nest_level == 1
-    print(is_leftover, rule.match_rule, is_last_part, nest_level)
     if isinstance(rule.match_rule, DivisionRule.MatchOnly):
         for id in rule.match_rule.ids:
+            expand_quote_links = None
+            if rule.post_rules != None:
+                if id in rule.post_rules:
+                    expand_quote_links = rule.post_rules[id].expand_quote_links
+            expand_quote_links = expand_quote_links or defaults.expand_quote_links
+
             self_output += posts[id].markdown(
                 posts=posts,
                 po_cookies=po_cookies,
-                expand_quote_links=defaults.expand_quote_links
+                expand_quote_links=expand_quote_links,
             ) + "\n"
+
             state.unprocessed_post_ids.pop(id, None)
     elif isinstance(rule.match_rule, DivisionRule.MatchUntil) or is_leftover:
         while len(state.unprocessed_post_ids.keys()) != 0:
-            next_id = list(state.unprocessed_post_ids.keys())[0]
+            id = list(state.unprocessed_post_ids.keys())[0]
 
             until_text = None
             if not is_leftover:
-                if next_id > rule.match_rule.id:
+                if id > rule.match_rule.id:
                     break
-                elif next_id == rule.match_rule.id:
+                elif id == rule.match_rule.id:
                     until_text = rule.match_rule.text_until
 
-            post = posts[next_id]
+            expand_quote_links = None
+            if rule.post_rules != None:
+                if id in rule.post_rules:
+                    expand_quote_links = rule.post_rules[id].expand_quote_links
+            expand_quote_links = expand_quote_links or defaults.expand_quote_links
+
+            post = posts[id]
             self_output += post.markdown(
                 posts,
                 po_cookies=po_cookies,
                 after_text=state.after_text,
                 until_text=until_text,
-                expand_quote_links=defaults.expand_quote_links
+                expand_quote_links=expand_quote_links,
             ) + "\n"
 
             state.after_text = until_text
             if until_text != None:
                 break
             else:
-                state.unprocessed_post_ids.pop(next_id)
+                state.unprocessed_post_ids.pop(id)
 
     if is_leftover:
         output += children_output + "\n"
