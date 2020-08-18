@@ -139,21 +139,36 @@ class Post:
 
         lines = []
 
-        header_items = [f"No.{self.id}", " ",
-                        f"{self.created_at.now}", " ",
-                        f"[P{self.page_number}]",
-                        f"(https://adnmb2.com/t/{self.thread_id}?page={self.page_number})"]
+        header_items = [f"No.{self.id}"]
+        if after_text != None or until_text != None:
+            header_items.append("（部分）")
+        header_items.extend([" ", f"{self.created_at.now}",
+                             " ", f"[P{self.page_number}]",
+                             f"(https://adnmb2.com/t/{self.thread_id}?page={self.page_number})"])
         if self.user_id not in po_cookies:
             header_items.extend([" ", f"ID:{self.user_id}"])
         header = "".join(header_items)
-
         lines.extend([header, ""])
 
         if self.attachment_name != None:
             image = f'<img width="40%" src="https://nmbimg.fastmirror.org/image/{self.adnmb_img}{self.adnmb_ext}">'
             lines.extend([image, ""])
 
-        for line in self.content.split("<br />\n"):
+        content = self.content
+        if after_text != None:
+            p = content.partition(after_text)
+            # 必定能找到，因为 until_text 已经找了一次
+            content = p[2]
+        if until_text != None:
+            p = content.partition(until_text)
+            if p[1] == "":
+                raise f"bad until_text {until_text}. post id: {self.id}"
+            content = p[0] + p[1]
+
+        if after_text != None:
+            lines.extend(
+                ['<span style="color: gray; font-size: smaller">（…）</span>  ', ""])
+        for line in content.split("<br />\n"):
             if line.strip() == "":
                 lines.append("")
             else:
@@ -166,6 +181,9 @@ class Post:
                         else:
                             lines.extend(
                                 posts[quote_link_id].markdown_lines(posts, po_cookies=po_cookies))
+        if until_text != None:
+            lines.extend(
+                ["", '<span style="color: gray; font-size: smaller">（…）</span>  '])
 
         return list(map(lambda line: f"> {line}", lines))
 
