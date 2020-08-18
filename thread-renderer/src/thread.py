@@ -17,17 +17,30 @@ class Thread:
 
     @staticmethod
     def load_from_dump_folder(path: Path) -> Thread:
+        thread_id = None
         with open(path / "thread.json") as thread_file:
             thread_object = json.load(thread_file)
-            body = Post.load_from_object(thread_object)
+            thread_id = thread_object["id"]
+            body = Post.load_from_object(
+                thread_object,
+                thread_id=thread_id,
+                page_number=1,
+            )
 
         pages = dict()
         for page_path in (path / "pages").iterdir():
             with open(page_path) as page_file:
                 page_number = int(splitext(page_path.name)[0])
                 page_object = json.load(page_file)
-                page = list(map(lambda post_object: Post.load_from_object(post_object),
-                                page_object))
+                page = list(map(
+                    lambda post_object:
+                    Post.load_from_object(
+                        post_object,
+                        thread_id=thread_id,
+                        page_number=page_number,
+                    ),
+                    page_object,
+                ))
                 pages[page_number] = page
 
         return Thread(
@@ -58,13 +71,20 @@ class Post:
     is_sage: bool
     is_admin: bool
     attachment_name: Optional[str]
+    adnmb_img: Optional[str]
+    adnmb_ext: Optional[str]
+
+    thread_id: int
+    page_number: int
 
     @dataclass(frozen=True)
     class AdnmbTime:
         now: str
 
     @staticmethod
-    def load_from_object(obj: Dict[Any]) -> Post:
+    def load_from_object(
+            obj: Dict[Any],
+            thread_id: int, page_number: int) -> Post:
 
         id = int(obj["id"])
         created_at = Post.AdnmbTime(now=obj["now"])
@@ -82,6 +102,12 @@ class Post:
         is_sage = int(obj["sage"]) != 0
         is_admin = int(obj["admin"]) != 0
         attachment_name = obj.get("fileName", None)
+        adnmb_img = obj["img"]
+        if adnmb_img == "":
+            adnmb_img = None
+        adnmb_ext = obj["ext"]
+        if adnmb_ext == "":
+            adnmb_ext = None
 
         return Post(
             id=id, created_at=created_at,
@@ -90,6 +116,10 @@ class Post:
             content=content,
             is_sage=is_sage, is_admin=is_admin,
             attachment_name=attachment_name,
+            adnmb_img=adnmb_img, adnmb_ext=adnmb_ext,
+
+            thread_id=thread_id,
+            page_number=page_number,
         )
 
     def markdown(
@@ -97,5 +127,23 @@ class Post:
             posts: OrderedDict[int, Post],
             after_text: Optional[str] = None,
             until_text: Optional[str] = None) -> str:
-        # TODO
-        return self.content.split("<br />\n")[0]
+
+        header = "No.{} {} [P{}](https://adnmb2.com/t/{}?page={})".format(
+            self.id, self.created_at.now, self.page_number,
+            self.thread_id, self.page_number,
+        )
+        md = "> {}\n> \n".format(header)
+
+        if self.attachment_name != None:
+            image = '<img width="40%" src="https://nmbimg.fastmirror.org/image/{}{}">'.format(
+                self.adnmb_img, self.adnmb_ext)
+            md += "> {}\n> \n".format(image)
+
+        for line in self.content.split("<br />\n"):
+            if line.strip() == "":
+                line = ""
+            else:
+                line = "<span>{}</span>  ".format(line)
+            md += "> {}\n".format(line)
+
+        return md
