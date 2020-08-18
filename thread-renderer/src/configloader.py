@@ -17,7 +17,19 @@ class DivisionsConfiguration:
 
     title: str
     po_cookies: List[str]
-    divisionRules: List["Division"]
+    defaults: "DivisionsConfiguration.Defaults"
+    divisionRules: List["DivisionRule"]
+
+    @dataclass
+    class Defaults:
+        expand_quote_links: bool
+
+        @staticmethod
+        def load_from_object(obj: Optional[Dict[str, Any], None]) -> DivisionsConfiguration.Defaults:
+            obj = obj or dict()
+            return DivisionsConfiguration.Defaults(
+                expand_quote_links=obj.get("expand-quote-links", True),
+            )
 
     @staticmethod
     def load(file: IO, root_folder_path: str) -> DivisionsConfiguration:
@@ -27,6 +39,8 @@ class DivisionsConfiguration:
         po = obj["po"]
         if not isinstance(po, list):
             po = [po]
+        defaults = DivisionsConfiguration.Defaults.load_from_object(
+            obj.get("defaults", None))
         divisionRules = obj.get("divisions", list())
 
         return DivisionsConfiguration(
@@ -34,6 +48,7 @@ class DivisionsConfiguration:
 
             title=title,
             po_cookies=po,
+            defaults=defaults,
             divisionRules=list(map(lambda d: DivisionRule.load_from_object(d),
                                    divisionRules))
         )

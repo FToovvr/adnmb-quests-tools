@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from __future__ import annotations
-from typing import Dict, List, OrderedDict, Optional, Any, Tuple
+from typing import Dict, List, OrderedDict, Optional, Any, Tuple, Union
 from dataclasses import dataclass
 
 from pathlib import Path
@@ -126,16 +126,19 @@ class Post:
             self,
             posts: OrderedDict[int, Post], po_cookies: List[str],
             after_text: Optional[str] = None,
-            until_text: Optional[str] = None) -> str:
+            until_text: Optional[str] = None,
+            expand_quote_links: Union[bool, List[int]] = True) -> str:
         return "\n".join(self.markdown_lines(
             posts=posts, po_cookies=po_cookies,
-            after_text=after_text, until_text=until_text)) + "\n"
+            after_text=after_text, until_text=until_text,
+            expand_quote_links=expand_quote_links)) + "\n"
 
     def markdown_lines(
             self,
             posts: OrderedDict[int, Post], po_cookies: List[str],
             after_text: Optional[str] = None,
-            until_text: Optional[str] = None) -> str:
+            until_text: Optional[str] = None,
+            expand_quote_links: Union[bool, List[int]] = True) -> str:
 
         lines = []
 
@@ -172,8 +175,12 @@ class Post:
             if line.strip() == "":
                 lines.append("")
             else:
+                if expand_quote_links == False:
+                    lines.append(f"<span>{line}</span>  ")
+                    continue
+
                 for (line, quote_link_id) in Post.split_line_by_quote_link(line):
-                    if line.strip != "":
+                    if line.strip() != "":
                         lines.append(f"<span>{line}</span>  ")
                     if quote_link_id != None:
                         if quote_link_id not in posts:

@@ -2,6 +2,9 @@ format-version: 1
 
 title: 善娑大金天
 po: fxc8mDE
+defaults:
+  expand-quote-links: false
+
 divisions:
   - title: 原文
     division-type: file
