@@ -28,8 +28,7 @@ def generate_outputs(
 
     for (i, rule) in enumerate(cfg.divisionRules):
         if rule.divisionType != DivisionType.FILE:
-            raise "division type of root division rules must be file. title: {}".format(
-                rule.title)
+            raise f"division type of root division rules must be file. title: {rule.title}"
         generate_markdown_outputs(
             output_folder_path=output_folder_path,
             posts=posts,
@@ -52,13 +51,13 @@ def generate_markdown_outputs(
         rule: DivisionRule, is_last_file: bool) -> Union[str, OutputFile]:
     nest_level = parent_nest_level+1
 
-    print("{} {}".format("#" * nest_level, rule.title))
+    print(f'{"#" * nest_level} {rule.title}')
 
     output = ""
 
-    output += "{} {}\n\n".format("#" * nest_level, rule.title)
+    output += f'{"#" * nest_level} {rule.title}\n\n'
     if rule.intro != None:
-        output += "{}\n\n".format(rule.intro)
+        output += f"{rule.intro}\n\n"
 
     children_output = ""
     titles = list(parent_titles)
@@ -107,7 +106,7 @@ def generate_markdown_outputs(
 
     if is_leftover:
         output += children_output + "\n"
-        output += "{} 尚未整理\n\n".format("#" * (nest_level+1))
+        output += f'{"#" * (nest_level+1)} 尚未整理\n\n'
         output += self_output + "\n"
     else:
         output += self_output + "\n"
@@ -121,8 +120,7 @@ def generate_markdown_outputs(
     elif rule.divisionType == DivisionType.SECTION:
         return output
     else:
-        raise "unknown division type: {}. title: {}".format(
-            rule.divisionType, rule.title)
+        raise f"unknown division type: {rule.divisionType}. title: {rule.title}"
 
 
 @dataclass

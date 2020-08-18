@@ -128,22 +128,21 @@ class Post:
             after_text: Optional[str] = None,
             until_text: Optional[str] = None) -> str:
 
-        header = "No.{} {} [P{}](https://adnmb2.com/t/{}?page={})".format(
-            self.id, self.created_at.now, self.page_number,
-            self.thread_id, self.page_number,
-        )
-        md = "> {}\n> \n".format(header)
+        header = "".join([f"No.{self.id}", " ",
+                          f"{self.created_at.now}", " ",
+                          f"[P{self.page_number}]",
+                          f"(https://adnmb2.com/t/{self.thread_id}?page={self.page_number})"])
+        md = f"> {header}\n> \n"
 
         if self.attachment_name != None:
-            image = '<img width="40%" src="https://nmbimg.fastmirror.org/image/{}{}">'.format(
-                self.adnmb_img, self.adnmb_ext)
-            md += "> {}\n> \n".format(image)
+            image = f'<img width="40%" src="https://nmbimg.fastmirror.org/image/{self.adnmb_img}{self.adnmb_ext}">'
+            md += f"> {image}\n> \n"
 
         for line in self.content.split("<br />\n"):
             if line.strip() == "":
                 line = ""
             else:
-                line = "<span>{}</span>  ".format(line)
-            md += "> {}\n".format(line)
+                line = f"<span>{line}</span>  "
+            md += f"> {line}\n"
 
         return md

@@ -25,7 +25,7 @@ from src.generating import generate_outputs
 
 def main(args: List[str]):
     if len(args) != 2:
-        exit_with_message("usage: {} <divisions.yaml>".format(args[0]),
+        exit_with_message(f"usage: {args[0]} <divisions.yaml>",
                           status_code=1)
 
     div_cfg_path = args[1]
@@ -37,10 +37,10 @@ def main(args: List[str]):
                     root_folder_path=Path(div_cfg_path).parent.absolute(),
                 )
             except Exception as e:
-                exit_with_message("failed to load {}: {}".format(div_cfg_path, e),
+                exit_with_message(f"failed to load {div_cfg_path}: {e}",
                                   status_code=3)
     except Exception as e:
-        exit_with_message("unable to open {}: {}".format(div_cfg_path, e),
+        exit_with_message(f"unable to open {div_cfg_path}: {e}",
                           status_code=2)
 
     thread = Thread.load_from_dump_folder(div_cfg.root_folder_path / "dump")

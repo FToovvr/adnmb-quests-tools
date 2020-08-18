@@ -70,7 +70,7 @@ class DivisionRule:
         elif divisionType == "file":
             divisionType = DivisionType.FILE
         else:
-            raise "unknown division type: {}".format(divisionType)
+            raise f"unknown division type: {divisionType}"
 
         intro = obj.get("intro", None)
 
