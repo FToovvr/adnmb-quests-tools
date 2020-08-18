@@ -54,6 +54,7 @@ class DivisionRule:
     class MatchUntil:
         id: int
         text_until: Optional[str] = None
+        exclude: Optional[List[int]] = None
 
     @dataclass(frozen=True)
     class MatchOnly:
@@ -82,9 +83,13 @@ class DivisionRule:
             if isinstance(until, int):
                 match_rule = DivisionRule.MatchUntil(id=until)
             else:
+                exclude = until.get("exclude", None)
+                if isinstance(exclude, int):
+                    exclude = [exclude]
                 match_rule = DivisionRule.MatchUntil(
                     id=until["id"],
                     text_until=until.get("text-until", None),
+                    exclude=exclude,
                 )
         if "only" in obj:
             if match_rule != None:

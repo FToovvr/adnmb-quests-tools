@@ -4,6 +4,7 @@ from typing import OrderedDict, List, Union
 from dataclasses import dataclass
 
 from pathlib import Path
+import logging
 
 from .configloader import DivisionsConfiguration, DivisionRule, DivisionType
 from .thread import Thread, Post
@@ -53,6 +54,20 @@ def generate_markdown_outputs(
 
     print(f'{"#" * nest_level} {rule.title}')
 
+    titles = list(parent_titles)
+    titles.append(rule.title)
+
+    if isinstance(rule.match_rule, DivisionRule.MatchUntil) and rule.match_rule.exclude != None:
+        for excluded_id in rule.match_rule.exclude:
+            if excluded_id > rule.match_rule.id:
+                logging.warning(
+                    f'excluded id {excluded_id} greater than upper bound {rule.match_rule.id}. rule-path: {".".join(titles)}')
+            if excluded_id not in state.unprocessed_post_ids:
+                logging.warning(
+                    f'unnecessary excluded id {excluded_id}. rule-path: {".".join(titles)}')
+            else:
+                state.unprocessed_post_ids.pop(excluded_id)
+
     output = ""
 
     output += f'{"#" * nest_level} {rule.title}\n\n'
@@ -60,8 +75,6 @@ def generate_markdown_outputs(
         output += f"{rule.intro}\n\n"
 
     children_output = ""
-    titles = list(parent_titles)
-    titles.append(rule.title)
     for (i, child_rule) in enumerate(rule.children):
         child_is_last_part = is_last_part and (i == len(rule.children)-1)
         children_output += generate_markdown_outputs(

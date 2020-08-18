@@ -13,9 +13,13 @@ divisions:
               * 人物：我、陆生；中途入场：肖自在、学姐（周丹玉）
             children:
               - title: 【开幕；同伴车卡】
-                until: 28473627
+                until:
+                  id: 28473627
+                  exclude: [28470920, 28471164, 28472048, 28472501]
               - title: 【步入鬼屋】
-                until: 28474327
+                until:
+                  id: 28474327
+                  exclude: [28473967, 28474161]
 
           - title: 白天｜➡️鬼屋·前门内
             intro: |
@@ -33,16 +37,19 @@ divisions:
                   id: 28476839
                   text-until: 气氛突然变得十分微妙。
               - title: 【收手机】
-                until: 28479619
+                until:
+                  id: 28479619
+                  exclude: 28478743
 
           - title: 白天｜➡️鬼屋·「泥土」道
-            intro: ｜
+            intro: |
               * 人物：我、陆生、肖自在、学姐、肌肉四人组
             children:
               - title: 【「泥土」道】
                 until:
                   id: 28482891
                   text-until: 你们紧随其后。
+                  exclude: 28481714
               - title: 【棺材】
                 until:
                   id: 28484078
@@ -53,7 +60,9 @@ divisions:
               * 人物：我、陆生、肖自在、学姐、肌肉四人组
             children:
               - title: 【古堡】
-                until: 28485349
+                until:
+                  id: 28485349
+                  exclude: 28484769
                 children:
                   - title: 「目前可以公开的情报」
                     only: 28485565
@@ -71,6 +80,7 @@ divisions:
                 until:
                   id: 28490317
                   text-until: 瞎许瞎许，哈哈哈！！”
+                  exclude: [28488585, 28489791]
                 children:
                   - title: 「目前可以公开的情报」
                     only: [28488459, 28488492]
@@ -78,19 +88,24 @@ divisions:
                 until:
                   id: 28490934
                   text-until: 说完头也不回的就去摆弄起手机。
+                  exclude: 28490700
               - title: 【灵异照片；撕下挂卷】
                 until:
                   id: 28500793
                   text-until: 众人都倒吸了一口凉气。
+                  exclude: 28499621
                 children:
                   - title: 「目前可以公开的情报」
                     only: 28499762
               - title: 【联系工作人员】
-                until: 28507535
+                until:
+                  id: 28507535
+                  exclude: [28500835, 28507341, 28507504]
               - title: 【田原偷拿挂卷】
                 until:
                   id: 28514327
                   text-until: 你也不想陪他再来这诡异的鬼屋再走一遭。
+                  exclude: [28512451, 28514185]
               - title: 【工作人员到来】
                 until:
                   id: 28515618
@@ -101,7 +116,9 @@ divisions:
               * 人物：我、陆生、肖自在、学姐、肌肉四人组、微笑的鬼屋工作人员
             children:
               - title: 【工作人员带出】
-                until: 28517969
+                until:
+                  id: 28517969
+                  exclude: 28516242
 
           - title: 白天｜➡️商场
             intro: |
@@ -114,14 +131,18 @@ divisions:
               - title: 【在金拱门讨论许愿】
                 until: 28520457
               - title: 【在「小黑」发串】
-                until: 28531438
+                until:
+                  id: 28531438
+                  exclude: 28520468
 
           - title: 下午｜➡️「734」路公交车
             intro: |
               * 人物： 我、陆生、肖自在
             children:
               - title: 【查看「小黑」回复，无法回复；在QQ联系学姐】
-                until: 28534231
+                until:
+                  id: 28534231
+                  exclude: 28534188
 
           - title: 下午｜➡️学校➡️学校·1栋·陆生寝室（414）
             intro: |
@@ -150,7 +171,9 @@ divisions:
               * 人物：我、学姐
             children:
               - title: 【见学姐，讨论诅咒】
-                until: 28558332
+                until:
+                  id: 28558332
+                  exclude: 28549715
                 children:
                   - title: 「PO之音」
                     only: 28558231
@@ -160,7 +183,9 @@ divisions:
               * 人物：我、陆生、我的室友们
             children:
               - title: 【与陆生讨论「小黑」回复】
-                until: 28561293
+                until:
+                  id: 28561293
+                  exclude: 28561262
               - title: 【与陆生讨论信任问题】
                 until: 28564268
 
@@ -173,7 +198,9 @@ divisions:
               - title: 【独自守夜】
                 until: 28564320
               - title: 【与学姐QQ交流，学姐失联】
-                until: 28567052
+                until:
+                  id: 28567052
+                  exclude: 28567021
               - title: 【集中精神守夜】
                 until: 28567086
 
@@ -189,4 +216,9 @@ divisions:
                   - title: 「PO之音」
                     only: 28577041
               - title: 【肖自在寝室的动静】
-                until: 28579740
+                until:
+                  id: 28579740
+                  exclude: [28577187, 28577558, 28578265, 28578304]
+
+  - title: 尚未整理
+    division-type: file
