@@ -36,7 +36,7 @@ def generate_outputs(
             parent_titles=list(),
             parent_nest_level=0,
             rule=rule,
-            is_last_file=(i == len(cfg.divisionRules)-1),
+            is_last_part=(i == len(cfg.divisionRules)-1),
         )
 
 
@@ -48,7 +48,7 @@ class OutputFile:
 def generate_markdown_outputs(
         output_folder_path: Path, posts: OrderedDict[int, Post],
         state: "GeneratingState", parent_titles: List[str], parent_nest_level: int,
-        rule: DivisionRule, is_last_file: bool) -> Union[str, OutputFile]:
+        rule: DivisionRule, is_last_part: bool) -> Union[str, OutputFile]:
     nest_level = parent_nest_level+1
 
     print(f'{"#" * nest_level} {rule.title}')
@@ -63,8 +63,7 @@ def generate_markdown_outputs(
     titles = list(parent_titles)
     titles.append(rule.title)
     for (i, child_rule) in enumerate(rule.children):
-        is_last_file = (rule.divisionType == DivisionType.FILE
-                        ) and is_last_file and (i == len(rule.children)-1)
+        child_is_last_part = is_last_part and (i == len(rule.children)-1)
         children_output += generate_markdown_outputs(
             output_folder_path=output_folder_path,
             posts=posts,
@@ -72,11 +71,12 @@ def generate_markdown_outputs(
             parent_titles=titles,
             parent_nest_level=nest_level,
             rule=child_rule,
-            is_last_file=is_last_file,
+            is_last_part=is_last_part,
         ) + "\n"
 
     self_output = ""
-    is_leftover = rule.match_rule == None and is_last_file and nest_level == 1
+    is_leftover = rule.match_rule == None and is_last_part and nest_level == 1
+    print(is_leftover, rule.match_rule, is_last_part, nest_level)
     if isinstance(rule.match_rule, DivisionRule.MatchOnly):
         for id in rule.match_rule.ids:
             self_output += posts[id].markdown(posts=posts) + "\n"
