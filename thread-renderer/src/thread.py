@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from __future__ import annotations
-from typing import Dict, List, OrderedDict, Optional, Any
+from typing import Dict, List, OrderedDict, Optional, Any, Tuple
 from dataclasses import dataclass
 
 from pathlib import Path
@@ -124,25 +124,62 @@ class Post:
 
     def markdown(
             self,
-            posts: OrderedDict[int, Post],
+            posts: OrderedDict[int, Post], po_cookies: List[str],
+            after_text: Optional[str] = None,
+            until_text: Optional[str] = None) -> str:
+        return "\n".join(self.markdown_lines(
+            posts=posts, po_cookies=po_cookies,
+            after_text=after_text, until_text=until_text)) + "\n"
+
+    def markdown_lines(
+            self,
+            posts: OrderedDict[int, Post], po_cookies: List[str],
             after_text: Optional[str] = None,
             until_text: Optional[str] = None) -> str:
 
-        header = "".join([f"No.{self.id}", " ",
-                          f"{self.created_at.now}", " ",
-                          f"[P{self.page_number}]",
-                          f"(https://adnmb2.com/t/{self.thread_id}?page={self.page_number})"])
-        md = f"> {header}\n> \n"
+        lines = []
+
+        header_items = [f"No.{self.id}", " ",
+                        f"{self.created_at.now}", " ",
+                        f"[P{self.page_number}]",
+                        f"(https://adnmb2.com/t/{self.thread_id}?page={self.page_number})"]
+        if self.user_id not in po_cookies:
+            header_items.extend([" ", f"ID:{self.user_id}"])
+        header = "".join(header_items)
+
+        lines.extend([header, ""])
 
         if self.attachment_name != None:
             image = f'<img width="40%" src="https://nmbimg.fastmirror.org/image/{self.adnmb_img}{self.adnmb_ext}">'
-            md += f"> {image}\n> \n"
+            lines.extend([image, ""])
 
         for line in self.content.split("<br />\n"):
             if line.strip() == "":
-                line = ""
+                lines.append("")
             else:
-                line = f"<span>{line}</span>  "
-            md += f"> {line}\n"
+                for (line, quote_link_id) in Post.split_line_by_quote_link(line):
+                    if line.strip != "":
+                        lines.append(f"<span>{line}</span>  ")
+                    if quote_link_id != None:
+                        if quote_link_id not in posts:
+                            lines.append(f"> {quote_link_id} 【串外引用】")
+                        else:
+                            lines.extend(
+                                posts[quote_link_id].markdown_lines(posts, po_cookies=po_cookies))
 
-        return md
+        return list(map(lambda line: f"> {line}", lines))
+
+    @staticmethod
+    def split_line_by_quote_link(line: str) -> List[Tuple[str, Optional[int]]]:
+        p = line.partition('<font color="#789922">&gt;&gt;No.')
+        if p[1] == "":
+            return [(line, None)]
+        p2 = p[2].partition('</font>')
+        if p2[1] == "":
+            raise "what? in split_line_by_quote_link"
+        result = [(p[0], int(p2[0]))]
+        if p2[2] != "":
+            result.extend(
+                Post.split_line_by_quote_link(p2[2])
+            )
+        return result

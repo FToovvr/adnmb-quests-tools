@@ -32,6 +32,7 @@ def generate_outputs(
             raise f"division type of root division rules must be file. title: {rule.title}"
         generate_markdown_outputs(
             output_folder_path=output_folder_path,
+            po_cookies=configuration.po_cookies,
             posts=posts,
             state=state,
             parent_titles=list(),
@@ -47,7 +48,7 @@ class OutputFile:
 
 
 def generate_markdown_outputs(
-        output_folder_path: Path, posts: OrderedDict[int, Post],
+        output_folder_path: Path, po_cookies: List[str], posts: OrderedDict[int, Post],
         state: "GeneratingState", parent_titles: List[str], parent_nest_level: int,
         rule: DivisionRule, is_last_part: bool) -> Union[str, OutputFile]:
     nest_level = parent_nest_level+1
@@ -79,12 +80,13 @@ def generate_markdown_outputs(
         child_is_last_part = is_last_part and (i == len(rule.children)-1)
         children_output += generate_markdown_outputs(
             output_folder_path=output_folder_path,
+            po_cookies=po_cookies,
             posts=posts,
             state=state,
             parent_titles=titles,
             parent_nest_level=nest_level,
             rule=child_rule,
-            is_last_part=is_last_part,
+            is_last_part=child_is_last_part,
         ) + "\n"
 
     self_output = ""
@@ -92,7 +94,8 @@ def generate_markdown_outputs(
     print(is_leftover, rule.match_rule, is_last_part, nest_level)
     if isinstance(rule.match_rule, DivisionRule.MatchOnly):
         for id in rule.match_rule.ids:
-            self_output += posts[id].markdown(posts=posts) + "\n"
+            self_output += posts[id].markdown(posts=posts,
+                                              po_cookies=po_cookies) + "\n"
             state.unprocessed_post_ids.pop(id, None)
     elif isinstance(rule.match_rule, DivisionRule.MatchUntil) or is_leftover:
         while len(state.unprocessed_post_ids.keys()) != 0:
@@ -108,6 +111,7 @@ def generate_markdown_outputs(
             post = posts[next_id]
             self_output += post.markdown(
                 posts,
+                po_cookies=po_cookies,
                 after_text=state.after_text,
                 until_text=until_text) + "\n"
 
