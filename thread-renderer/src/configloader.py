@@ -19,7 +19,7 @@ class DivisionsConfiguration:
     po_cookies: List[str]
 
     defaults: "DivisionsConfiguration.Defaults"
-    toc: Optional["DivisionsConfiguration.TOC"]
+    toc: Union[None, "DivisionsConfiguration.TOCUsingDetails"]
 
     division_rules: List["DivisionRule"]
 
@@ -34,10 +34,10 @@ class DivisionsConfiguration:
                 expand_quote_links=obj.get("expand-quote-links", True),
             )
 
-    class TOC(Enum):
-        DETAILS_MARGIN = auto()
-        DETAILS_BLOCKQUOTE = auto()
-        # LIST = auto()
+    @dataclass(frozen=True)
+    class TOCUsingDetails:
+        use_margin: bool = False
+        use_blockquote: bool = False
 
     @staticmethod
     def load(file: IO, root_folder_path: str) -> DivisionsConfiguration:
@@ -55,9 +55,10 @@ class DivisionsConfiguration:
             toc = None
         else:
             if toc == True or toc == "details" or toc == "details-margin":
-                toc = DivisionsConfiguration.TOC.DETAILS_MARGIN
+                toc = DivisionsConfiguration.TOCUsingDetails(use_margin=True)
             elif toc == "details-blockquote":
-                toc = DivisionsConfiguration.TOC.DETAILS_BLOCKQUOTE
+                toc = DivisionsConfiguration.TOCUsingDetails(
+                    use_blockquote=True)
             else:
                 raise f"unknown toc type: {toc}"
 

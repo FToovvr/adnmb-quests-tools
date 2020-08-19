@@ -21,7 +21,7 @@ class OutputsGenerator:
 
     defaults: DivisionsConfiguration.Defaults
 
-    toc: DivisionsConfiguration.TOC
+    toc: Union[None, DivisionsConfiguration.TOCUsingDetails]
 
     po_cookies: List[str]
     root_division_rules: [DivisionRule]
@@ -180,7 +180,7 @@ class OutputsGenerator:
                 shown_title, 1, title_number) + "\n"
             if self.toc != None:
                 toc = OutputsGenerator.__generate_toc(
-                    in_file_state.titles, self.toc)
+                    in_file_state.titles, toc_cfg=self.toc)
                 output += toc + "\n"
             output += _output + "\n"
             title = "·".join(titles[1:])
@@ -304,17 +304,16 @@ class OutputsGenerator:
     @staticmethod
     def __generate_toc(
         titles: "OutputsGenerator.InFileState.Title",
-            toc_type: DivisionsConfiguration.TOC) -> str:
-        if toc_type in (DivisionsConfiguration.TOC.DETAILS_MARGIN, DivisionsConfiguration.TOC.DETAILS_BLOCKQUOTE):
+            toc_cfg: Union[None, DivisionsConfiguration.TOCUsingDetails]) -> str:
+        if isinstance(toc_cfg, DivisionsConfiguration.TOCUsingDetails):
             return OutputsGenerator.__generate_toc_using_details(
-                titles,
-                uses_blockquote=toc_type == DivisionsConfiguration.TOC.DETAILS_BLOCKQUOTE)
-        raise f"unimplemented toc_type: {toc_type}"
+                titles, toc_cfg=toc_cfg)
+        raise f"unimplemented toc configuration: {toc_cfg}"
 
     @staticmethod
     def __generate_toc_using_details(
             titles: "OutputsGenerator.InFileState.Title",
-            uses_blockquote: bool) -> str:
+            toc_cfg: DivisionsConfiguration.TOCUsingDetails) -> str:
 
         toc = ""
 
@@ -338,38 +337,38 @@ class OutputsGenerator:
                         summary = '<span style="color: red; font-style: italic">缺失</span>'
                         title_href = '#'
 
-                    if uses_blockquote:
+                    if toc_cfg.use_blockquote:
                         toc += "> " * (current_level - 1)
                     details = f'<details'
                     if current_level <= 2:  # TODO: 允许自定义深度
                         details += ' open'
-                    if not uses_blockquote:
+                    if toc_cfg.use_margin:
                         details += f' style="{DETAILS_STYLE}; background-color: #80808020"'
                     details += f'><summary><a href="{title_href}">{summary}</a></summary>'
                     toc += details
-                    if uses_blockquote:
+                    if toc_cfg.use_blockquote:
                         toc += "\n"
                         toc += "> " * (current_level - 1)
                         toc += "\n"
                     current_level += 1
             else:
-                if uses_blockquote:
+                if toc_cfg.use_blockquote:
                     toc += "> " * (current_level - 1)
                 li = f'<li'
-                if not uses_blockquote:
+                if toc_cfg.use_margin:
                     li += f' style="{DETAILS_STYLE}"'
                 li += f'><a href="{title_href}">{title}</a></li>'
                 toc += li
-                if uses_blockquote:
+                if toc_cfg.use_blockquote:
                     toc += "\n"
                     toc += "> " * (current_level - 1)
                     toc += "\n"
                 while next_level < current_level:
                     current_level -= 1
-                    if uses_blockquote:
+                    if toc_cfg.use_blockquote:
                         toc += "> " * (current_level - 1)
                     toc += '</details>'
-                    if uses_blockquote:
+                    if toc_cfg.use_blockquote:
                         toc += "\n"
                         toc += "> " * (current_level - 1)
                         toc += "\n"
