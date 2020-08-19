@@ -36,7 +36,7 @@ def generate_outputs(
             po_cookies=configuration.po_cookies,
             posts=posts,
             state=state,
-            parent_titles=list(),
+            parent_titles=[cfg.title],
             parent_nest_level=0,
             rule=rule,
             is_last_part=(i == len(cfg.divisionRules)-1),
@@ -58,8 +58,6 @@ def generate_markdown_outputs(
     else:
         nest_level = parent_nest_level+1
 
-    print(f'{"#" * nest_level} {rule.title}')
-
     titles = list(parent_titles)
     titles.append(rule.title)
 
@@ -76,7 +74,14 @@ def generate_markdown_outputs(
 
     output = ""
 
-    output += f'{"#" * nest_level} {rule.title}\n\n'
+    if rule.divisionType == DivisionType.FILE:
+        shown_title = "·".join(titles)
+    else:
+        shown_title = rule.title
+
+    print(f'{"#" * nest_level} {shown_title}')
+    output += f'{"#" * nest_level} {shown_title}\n\n'
+
     if rule.intro != None:
         output += f"{rule.intro}\n\n"
 
@@ -86,6 +91,7 @@ def generate_markdown_outputs(
         _children_output = generate_markdown_outputs(
             output_folder_path=output_folder_path,
             defaults=defaults,
+
             po_cookies=po_cookies,
             posts=posts,
             state=state,
@@ -165,7 +171,7 @@ def generate_markdown_outputs(
         output += children_output + "\n"
 
     if rule.divisionType == DivisionType.FILE:
-        title = "·".join(titles)
+        title = "·".join(titles[1:])
         output_file_path = output_folder_path / (title + ".md")
         output_file_path.write_text(output)
         return OutputFile(title)
