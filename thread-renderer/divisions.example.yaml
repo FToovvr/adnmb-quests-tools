@@ -226,5 +226,5 @@ divisions:
                   id: 28579740
                   exclude: [28577187, 28577558, 28578265, 28578304]
 
-  - title: 尚未整理
-    division-type: file
+      - title: 尚未整理
+        division-type: file

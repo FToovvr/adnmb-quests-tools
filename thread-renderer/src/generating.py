@@ -53,7 +53,10 @@ def generate_markdown_outputs(
         po_cookies: List[str], posts: OrderedDict[int, Post],
         state: "GeneratingState", parent_titles: List[str], parent_nest_level: int,
         rule: DivisionRule, is_last_part: bool) -> Union[str, OutputFile]:
-    nest_level = parent_nest_level+1
+    if rule.divisionType == DivisionType.FILE:
+        nest_level = 1
+    else:
+        nest_level = parent_nest_level+1
 
     print(f'{"#" * nest_level} {rule.title}')
 
@@ -80,7 +83,7 @@ def generate_markdown_outputs(
     children_output = ""
     for (i, child_rule) in enumerate(rule.children):
         child_is_last_part = is_last_part and (i == len(rule.children)-1)
-        children_output += generate_markdown_outputs(
+        _children_output = generate_markdown_outputs(
             output_folder_path=output_folder_path,
             defaults=defaults,
             po_cookies=po_cookies,
@@ -90,7 +93,18 @@ def generate_markdown_outputs(
             parent_nest_level=nest_level,
             rule=child_rule,
             is_last_part=child_is_last_part,
-        ) + "\n"
+        )
+
+        if isinstance(_children_output, str):
+            children_output += _children_output + "\n"
+        elif isinstance(_children_output, OutputFile):
+            child_titles = list(titles)
+            child_titles.append(child_rule.title)
+            child_title = "·".join(child_titles)
+            children_output += f'{"#"*(nest_level+1)} {child_rule.title}\n\n'
+            children_output += f"见[{child_title}]({child_title}.md)\n"
+        else:
+            raise "what? in generate_markdown_outputs"
 
     self_output = ""
     is_leftover = rule.match_rule == None and is_last_part and nest_level == 1
@@ -143,8 +157,9 @@ def generate_markdown_outputs(
 
     if is_leftover:
         output += children_output + "\n"
-        output += f'{"#" * (nest_level+1)} 尚未整理\n\n'
-        output += self_output + "\n"
+        if self_output != "":
+            output += f'{"#" * (nest_level+1)} 尚未整理\n\n'
+            output += self_output + "\n"
     else:
         output += self_output + "\n"
         output += children_output + "\n"
