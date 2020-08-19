@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
-from typing import OrderedDict, List, Union, Optional, Dict, Set
+from typing import OrderedDict, List, Union, Optional, Dict, Set, NamedTuple
 from dataclasses import dataclass, field
 
 from pathlib import Path
 import logging
+import urllib
 
 from .configloader import DivisionsConfiguration, DivisionRule, DivisionType
 from .thread import Thread, Post
@@ -20,15 +21,13 @@ class OutputsGenerator:
 
     defaults: DivisionsConfiguration.Defaults
 
+    toc: DivisionsConfiguration.TOC
+
     po_cookies: List[str]
     root_division_rules: [DivisionRule]
     root_title: str
 
     state: "OutputsGenerator.GlobalState"
-
-    @dataclass(frozen=True)
-    class OutputFile:
-        title: str
 
     @dataclass
     class GlobalState:
@@ -39,6 +38,15 @@ class OutputsGenerator:
     class InFileState:
         expanded_post_ids: Set[int]  # = field(default_factory=set)
         post_render: PostRender
+
+        titles: List["OutputsGenerator.InFileState.Title"] = field(
+            default_factory=list)  # (title, nest_level, number)
+        title_counts: Dict[str, int] = field(default_factory=dict)
+
+        class Title(NamedTuple):
+            title: str
+            nest_level: int
+            number: int
 
     @staticmethod
     def generate_outputs(output_folder_path: Path, thread: Thread, configuration: DivisionsConfiguration):
@@ -51,6 +59,7 @@ class OutputsGenerator:
         self.post_pool = thread.flattened_post_dict()
         self.output_folder_path = output_folder_path
         self.defaults = cfg.defaults
+        self.toc = cfg.toc
         self.po_cookies = cfg.po_cookies
         self.root_division_rules = cfg.division_rules
         self.root_title = cfg.title
@@ -78,8 +87,11 @@ class OutputsGenerator:
                    parent_titles: List[str], parent_nest_level: int,
                    rule: DivisionRule, is_last_part: bool,
                    in_file_state: Optional["OutputsGenerator.InFileState"] = None
-                   ) -> Union[str, "OutputsGenerator.OutputFile"]:
+                   ) -> Optional[str]:
         if rule.divisionType == DivisionType.FILE:
+            nest_level_in_parent = parent_nest_level+1
+            parent_in_file_state = in_file_state
+
             nest_level = 1
             expanded_post_ids = set()
             in_file_state = OutputsGenerator.InFileState(
@@ -95,9 +107,6 @@ class OutputsGenerator:
         else:
             nest_level = parent_nest_level+1
 
-        titles = list(parent_titles)
-        titles.append(rule.title)
-
         if isinstance(rule.match_rule, DivisionRule.MatchUntil) and rule.match_rule.exclude != None:
             self.__remove_excluded_posts_fron_unprocessed_posts(
                 excluded_post_ids=rule.match_rule.exclude,
@@ -106,13 +115,27 @@ class OutputsGenerator:
 
         output = ""
 
+        titles = list(parent_titles)
+        titles.append(rule.title)
         if rule.divisionType == DivisionType.FILE:
             shown_title = "·".join(titles)
         else:
             shown_title = rule.title
+        title_number = in_file_state.title_counts.get(shown_title, 0) + 1
+        in_file_state.title_counts[shown_title] = title_number
+        in_file_state.titles.append(
+            OutputsGenerator.InFileState.Title(shown_title, nest_level, title_number))
+        if rule.divisionType == DivisionType.FILE and parent_in_file_state != None:
+            title_number_in_parent = parent_in_file_state.title_counts.get(
+                rule.title, 0) + 1
+            parent_in_file_state.title_counts[rule.title] = title_number_in_parent
+            parent_in_file_state.titles.append(
+                OutputsGenerator.InFileState.Title(rule.title, nest_level_in_parent, title_number_in_parent))
 
         print(f'{"#" * nest_level} {shown_title}')
-        output += f'{"#" * nest_level} {shown_title}\n\n'
+        if rule.divisionType != DivisionType.FILE:  # FILE 输出标题延后
+            output += OutputsGenerator.__generate_heading(
+                shown_title, nest_level, title_number) + "\n"
 
         if rule.intro != None:
             output += f"{rule.intro}\n\n"
@@ -144,17 +167,32 @@ class OutputsGenerator:
         if is_leftover:
             output += children_output + "\n"
             if self_output != "":
-                output += f'{"#" * (nest_level+1)} 尚未整理\n\n'
+                output += OutputsGenerator.__generate_heading(
+                    "尚未整理", nest_level+1, title_number) + "\n"
                 output += self_output + "\n"
         else:
             output += self_output + "\n"
             output += children_output + "\n"
 
         if rule.divisionType == DivisionType.FILE:
+            _output = output
+            output = OutputsGenerator.__generate_heading(
+                shown_title, 1, title_number) + "\n"
+            if self.toc != None:
+                toc = OutputsGenerator.__generate_toc(
+                    in_file_state.titles, self.toc)
+                output += toc + "\n"
+            output += _output + "\n"
             title = "·".join(titles[1:])
             output_file_path = self.output_folder_path / (title + ".md")
             output_file_path.write_text(output)
-            return OutputsGenerator.OutputFile(title)
+
+            if parent_in_file_state != None:
+                parent_content = OutputsGenerator.__generate_heading(
+                    rule.title, nest_level_in_parent+1, title_number_in_parent) + "\n"
+                parent_content += f"见[{title}]({title}.md)\n"
+                return parent_content
+            return None
         elif rule.divisionType == DivisionType.SECTION:
             return output
         else:
@@ -189,9 +227,6 @@ class OutputsGenerator:
 
             if isinstance(_child_output, str):
                 children_output += _child_output + "\n"
-            elif isinstance(_child_output, OutputsGenerator.OutputFile):
-                children_output += f'{"#"*(nest_level+1)} {child_rule.title}\n\n'
-                children_output += f"见[{_child_output.title}]({_child_output.title}.md)\n"
             else:
                 raise "what? in generate_markdown_outputs"
         return children_output
@@ -254,3 +289,55 @@ class OutputsGenerator:
             else:
                 self.global_state.unprocessed_post_ids.pop(id)
         return output
+
+    @staticmethod
+    def __generate_heading(title: str, level: int, number: int):
+        return f'<h{level} id="{OutputsGenerator.__get_heading_id(title, number)}">{title}</h{level}>\n'
+
+    @staticmethod
+    def __get_heading_id(title: str, number: int):
+        id = urllib.parse.quote(title)
+        if number != 1:
+            id += f"-{number-1}"
+        return id
+
+    @staticmethod
+    def __generate_toc(
+            titles: "OutputsGenerator.InFileState.Title",
+            toc_type: DivisionsConfiguration.TOC):
+
+        toc = ""
+
+        for (i, title_tuple) in enumerate(titles):
+            current_level = title_tuple.nest_level
+            next_level = 0
+            if i+1 < len(titles):
+                next_level = titles[i+1].nest_level
+
+            title = title_tuple.title
+            title_href = "#" + \
+                OutputsGenerator.__get_heading_id(title, title_tuple.number)
+            DETAILS_STYLE = "margin: 8px 0px 8px 16px; padding: 1px"
+            if next_level > current_level:
+                first = True
+                while next_level > current_level:
+                    if first:
+                        summary = title
+                        first = False
+                    else:
+                        summary = '<span style="color: red; font-style: italic">缺失</span>'
+                        title_href = '#'
+
+                    details = f'<details'
+                    if current_level <= 2:  # TODO: 允许自定义深度
+                        details += ' open'
+                    details += f' style="{DETAILS_STYLE}; background-color: #80808020"><summary><a href="{title_href}">{summary}</a></summary>'
+                    toc += details
+                    current_level += 1
+            else:
+                toc += f'<li style="{DETAILS_STYLE}"><a href="{title_href}">{title}</a></li>'
+                while next_level < current_level:
+                    toc += '</details>'
+                    current_level -= 1
+
+        return toc + "\n"

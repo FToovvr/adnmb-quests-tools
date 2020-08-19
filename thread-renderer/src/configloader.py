@@ -17,7 +17,10 @@ class DivisionsConfiguration:
 
     title: str
     po_cookies: List[str]
+
     defaults: "DivisionsConfiguration.Defaults"
+    toc: Optional["DivisionsConfiguration.TOC"]
+
     division_rules: List["DivisionRule"]
 
     @dataclass(frozen=True)
@@ -31,6 +34,11 @@ class DivisionsConfiguration:
                 expand_quote_links=obj.get("expand-quote-links", True),
             )
 
+    class TOC(Enum):
+        DETAILS_MARGIN = auto()
+        # DETAILS_BLOCKQUOTE = auto()
+        # LIST = auto()
+
     @staticmethod
     def load(file: IO, root_folder_path: str) -> DivisionsConfiguration:
         obj = yaml.safe_load(file)
@@ -41,6 +49,16 @@ class DivisionsConfiguration:
             po = [po]
         defaults = DivisionsConfiguration.Defaults.load_from_object(
             obj.get("defaults", None))
+
+        toc = obj.get("toc", None)
+        if toc == False or toc == None:
+            toc = None
+        else:
+            if toc == True or toc == "details" or toc == "details-margin":
+                toc = DivisionsConfiguration.TOC.DETAILS_MARGIN
+            else:
+                raise f"unknown toc type: {toc}"
+
         division_rules = obj.get("divisions", list())
 
         return DivisionsConfiguration(
@@ -49,6 +67,7 @@ class DivisionsConfiguration:
             title=title,
             po_cookies=po,
             defaults=defaults,
+            toc=toc,
             division_rules=list(map(lambda d: DivisionRule.load_from_object(d),
                                     division_rules))
         )
