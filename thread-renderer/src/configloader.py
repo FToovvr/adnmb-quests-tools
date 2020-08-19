@@ -84,8 +84,12 @@ class DivisionRule:
         def load_from_object(obj: Optional[Dict[str, Any]]) -> DivisionRule.PostRule:
             obj = obj or dict()
 
+            expand_quote_links = obj.get("expand-quote-links", None)
+            if type(expand_quote_links) is int:
+                expand_quote_links = [expand_quote_links]
+
             return DivisionRule.PostRule(
-                expand_quote_links=obj.get("expand-quote-links", None),
+                expand_quote_links=expand_quote_links,
             )
 
     @staticmethod
@@ -108,11 +112,11 @@ class DivisionRule:
             if match_rule != None:
                 raise "multiple match rules not allowed"
             until = obj["until"]
-            if isinstance(until, int):
+            if type(until) is int:
                 match_rule = DivisionRule.MatchUntil(id=until)
             else:
                 exclude = until.get("exclude", None)
-                if isinstance(exclude, int):
+                if type(exclude) is int:
                     exclude = [exclude]
                 match_rule = DivisionRule.MatchUntil(
                     id=until["id"],
@@ -123,7 +127,7 @@ class DivisionRule:
             if match_rule != None:
                 raise "multiple match rules not allowed"
             only = obj["only"]
-            if isinstance(only, int):
+            if type(only) is int:
                 match_rule = DivisionRule.MatchOnly(ids=[only])
             else:  # List[int]
                 match_rule = DivisionRule.MatchOnly(ids=only)

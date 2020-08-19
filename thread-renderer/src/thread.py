@@ -142,6 +142,7 @@ class Post:
 
         lines = []
 
+        # 生成头部
         header_items = [f"No.{self.id}"]
         if after_text != None or until_text != None:
             header_items.append("（部分）")
@@ -153,11 +154,13 @@ class Post:
         header = "".join(header_items)
         lines.extend([header, ""])
 
+        # 生成图片部分
         if self.attachment_name != None:
             image = f'<img width="40%" src="https://nmbimg.fastmirror.org/image/{self.adnmb_img}{self.adnmb_ext}">'
             lines.extend([image, ""])
 
-        content = self.content
+        # 生成正文部分
+        content = self.content.replace('\r\n', '\n')
         if after_text != None:
             p = content.partition(after_text)
             # 必定能找到，因为 until_text 已经找了一次
@@ -176,18 +179,16 @@ class Post:
                 lines.append("")
             else:
                 if expand_quote_links == False:
+                    # <span> 标签用于防止文本被被当做markdown解析
+                    # 两个空格是markdown换行
                     lines.append(f"<span>{line}</span>  ")
                     continue
 
-                for (line, quote_link_id) in Post.split_line_by_quote_link(line):
-                    if line.strip() != "":
-                        lines.append(f"<span>{line}</span>  ")
-                    if quote_link_id != None:
-                        if quote_link_id not in posts:
-                            lines.append(f"> {quote_link_id} 【串外引用】")
-                        else:
-                            lines.extend(
-                                posts[quote_link_id].markdown_lines(posts, po_cookies=po_cookies))
+                lines.extend(Post.__generate_content(
+                    posts=posts, po_cookies=po_cookies,
+                    line=line, expand_quote_links=expand_quote_links,
+                ))
+
         if until_text != None:
             lines.extend(
                 ["", '<span style="color: gray; font-size: smaller">（…）</span>  '])
@@ -195,16 +196,45 @@ class Post:
         return list(map(lambda line: f"> {line}", lines))
 
     @staticmethod
+    def __generate_content(
+            posts: OrderedDict[int, Post], po_cookies: List[str],
+            line: str, expand_quote_links: Union[bool, List[int]]) -> List[str]:
+        lines = []
+        unappened_content = ""
+        for (content_before, quote_link_id) in Post.split_line_by_quote_link(line):
+            if isinstance(expand_quote_links, list) and quote_link_id != None and (
+                    quote_link_id not in expand_quote_links):
+                unappened_content += f'{content_before}<font color="#789922">&gt;&gt;No.{quote_link_id}</font>'
+            else:
+                line = unappened_content + content_before
+                unappened_content = ""
+                if line.strip() != "":
+                    lines.append(f"<span>{line}</span>  ")
+
+                if quote_link_id != None:
+                    if quote_link_id not in posts:
+                        lines.append(f"> {quote_link_id} 【串外引用】")
+                    else:
+                        lines.extend(
+                            posts[quote_link_id].markdown_lines(posts, po_cookies=po_cookies))
+        if unappened_content.strip() != "":
+            lines.append(f"<span>{unappened_content}</span>  ")
+        lines.append("")
+
+        return lines
+
+    @staticmethod
     def split_line_by_quote_link(line: str) -> List[Tuple[str, Optional[int]]]:
-        p = line.partition('<font color="#789922">&gt;&gt;No.')
-        if p[1] == "":
+        (before_font_open, font_open, after_font_open) = line.partition(
+            '<font color="#789922">&gt;&gt;No.')
+        if font_open == "":
             return [(line, None)]
-        p2 = p[2].partition('</font>')
-        if p2[1] == "":
+        (font_inner, font_close, after_font_close) = after_font_open.partition('</font>')
+        if font_close == "":
             raise "what? in split_line_by_quote_link"
-        result = [(p[0], int(p2[0]))]
-        if p2[2] != "":
+        result = [(before_font_open, int(font_inner))]
+        if after_font_close != "":
             result.extend(
-                Post.split_line_by_quote_link(p2[2])
+                Post.split_line_by_quote_link(after_font_close)
             )
         return result
