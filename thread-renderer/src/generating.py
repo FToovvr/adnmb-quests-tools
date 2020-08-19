@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import OrderedDict, List, Union
+from typing import OrderedDict, List, Union, Optional, Dict
 from dataclasses import dataclass
 
 from pathlib import Path
@@ -80,15 +80,10 @@ class OutputsGenerator:
         titles.append(rule.title)
 
         if isinstance(rule.match_rule, DivisionRule.MatchUntil) and rule.match_rule.exclude != None:
-            for excluded_id in rule.match_rule.exclude:
-                if excluded_id > rule.match_rule.id:
-                    logging.warning(
-                        f'excluded id {excluded_id} greater than upper bound {rule.match_rule.id}. rule-path: {".".join(titles)}')
-                if excluded_id not in self.state.unprocessed_post_ids:
-                    logging.warning(
-                        f'unnecessary excluded id {excluded_id}. rule-path: {".".join(titles)}')
-                else:
-                    self.state.unprocessed_post_ids.pop(excluded_id)
+            self.__remove_excluded_posts_fron_unprocessed_posts(
+                excluded_post_ids=rule.match_rule.exclude,
+                match_until_id=rule.match_rule.id,
+            )
 
         output = ""
 
@@ -103,75 +98,26 @@ class OutputsGenerator:
         if rule.intro != None:
             output += f"{rule.intro}\n\n"
 
-        children_output = ""
-        for (i, child_rule) in enumerate(rule.children):
-            child_is_last_part = is_last_part and (i == len(rule.children)-1)
-            _children_output = self.__generate(
-                parent_titles=titles,
-                parent_nest_level=nest_level,
-                rule=child_rule,
-                is_last_part=child_is_last_part,
-            )
-
-            if isinstance(_children_output, str):
-                children_output += _children_output + "\n"
-            elif isinstance(_children_output, OutputsGenerator.OutputFile):
-                child_titles = list(titles)
-                child_titles.append(child_rule.title)
-                child_title = "·".join(child_titles)
-                children_output += f'{"#"*(nest_level+1)} {child_rule.title}\n\n'
-                children_output += f"见[{child_title}]({child_title}.md)\n"
-            else:
-                raise "what? in generate_markdown_outputs"
+        children_output = self.__generate_children(
+            rule.children,
+            is_last_part=is_last_part,
+            titles=titles,
+            nest_level=nest_level,
+        )
 
         self_output = ""
         is_leftover = rule.match_rule == None and is_last_part and nest_level == 1
         if isinstance(rule.match_rule, DivisionRule.MatchOnly):
-            for id in rule.match_rule.ids:
-                expand_quote_links = None
-                if rule.post_rules != None:
-                    if id in rule.post_rules:
-                        expand_quote_links = rule.post_rules[id].expand_quote_links
-                expand_quote_links = expand_quote_links or self.defaults.expand_quote_links
-
-                self_output += self.posts[id].markdown(
-                    posts=self.posts,
-                    po_cookies=self.po_cookies,
-                    expand_quote_links=expand_quote_links,
-                ) + "\n"
-
-                self.state.unprocessed_post_ids.pop(id, None)
+            self_output += self.__generate_only(
+                only_ids=rule.match_rule.ids,
+                post_rules=rule.post_rules,
+            )
         elif isinstance(rule.match_rule, DivisionRule.MatchUntil) or is_leftover:
-            while len(self.state.unprocessed_post_ids.keys()) != 0:
-                id = list(self.state.unprocessed_post_ids.keys())[0]
-
-                until_text = None
-                if not is_leftover:
-                    if id > rule.match_rule.id:
-                        break
-                    elif id == rule.match_rule.id:
-                        until_text = rule.match_rule.text_until
-
-                expand_quote_links = None
-                if rule.post_rules != None:
-                    if id in rule.post_rules:
-                        expand_quote_links = rule.post_rules[id].expand_quote_links
-                expand_quote_links = expand_quote_links or self.defaults.expand_quote_links
-
-                post = self.posts[id]
-                self_output += post.markdown(
-                    self.posts,
-                    po_cookies=self.po_cookies,
-                    after_text=self.state.after_text,
-                    until_text=until_text,
-                    expand_quote_links=expand_quote_links,
-                ) + "\n"
-
-                self.state.after_text = until_text
-                if until_text != None:
-                    break
-                else:
-                    self.state.unprocessed_post_ids.pop(id)
+            self_output += self.__generate_until(
+                until=rule.match_rule,
+                post_rules=rule.post_rules,
+                is_leftover=is_leftover
+            )
 
         if is_leftover:
             output += children_output + "\n"
@@ -191,3 +137,89 @@ class OutputsGenerator:
             return output
         else:
             raise f"unknown division type: {rule.divisionType}. title: {rule.title}"
+
+    def __remove_excluded_posts_fron_unprocessed_posts(self, excluded_post_ids: List[int], match_until_id: int):
+        for excluded_id in excluded_post_ids:
+            if excluded_id > match_until_id:
+                logging.warning(
+                    f'excluded id {excluded_id} greater than upper bound {match_until_id}')
+            if excluded_id not in self.state.unprocessed_post_ids:
+                logging.warning(
+                    f'unnecessary excluded id {excluded_id}')
+            else:
+                self.state.unprocessed_post_ids.pop(excluded_id)
+
+    def __generate_children(self, rules: [DivisionRule], is_last_part: bool, titles: str, nest_level: int):
+        children_output = ""
+        for (i, child_rule) in enumerate(rules):
+            child_is_last_part = is_last_part and (
+                i == len(rules)-1)
+            _child_output = self.__generate(
+                parent_titles=titles,
+                parent_nest_level=nest_level,
+                rule=child_rule,
+                is_last_part=child_is_last_part,
+            )
+
+            if isinstance(_child_output, str):
+                children_output += _child_output + "\n"
+            elif isinstance(_child_output, OutputsGenerator.OutputFile):
+                children_output += f'{"#"*(nest_level+1)} {child_rule.title}\n\n'
+                children_output += f"见[{_child_output.title}]({_child_output.title}.md)\n"
+            else:
+                raise "what? in generate_markdown_outputs"
+        return children_output
+
+    def __generate_only(self, only_ids: List[int], post_rules: Optional[Dict[int, DivisionRule.PostRule]]):
+        output = ""
+        for id in only_ids:
+            expand_quote_links = None
+            if post_rules != None and id in post_rules:
+                expand_quote_links = post_rules[id].expand_quote_links
+            expand_quote_links = expand_quote_links or self.defaults.expand_quote_links
+
+            output += self.posts[id].markdown(
+                posts=self.posts,
+                po_cookies=self.po_cookies,
+                expand_quote_links=expand_quote_links,
+            ) + "\n"
+
+            self.state.unprocessed_post_ids.pop(id, None)
+
+        return output
+
+    def __generate_until(self,
+                         until: DivisionRule.MatchUntil,
+                         post_rules: Optional[Dict[int, DivisionRule.PostRule]],
+                         is_leftover: bool):
+        output = ""
+        while len(self.state.unprocessed_post_ids.keys()) != 0:
+            id = list(self.state.unprocessed_post_ids.keys())[0]
+
+            until_text = None
+            if not is_leftover:
+                if id > until.id:
+                    break
+                elif id == until.id:
+                    until_text = until.text_until
+
+            expand_quote_links = None
+            if post_rules != None and id in post_rules:
+                expand_quote_links = post_rules[id].expand_quote_links
+            expand_quote_links = expand_quote_links or self.defaults.expand_quote_links
+
+            post = self.posts[id]
+            output += post.markdown(
+                self.posts,
+                po_cookies=self.po_cookies,
+                after_text=self.state.after_text,
+                until_text=until_text,
+                expand_quote_links=expand_quote_links,
+            ) + "\n"
+
+            self.state.after_text = until_text
+            if until_text != None:
+                break
+            else:
+                self.state.unprocessed_post_ids.pop(id)
+        return output
