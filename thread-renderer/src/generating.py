@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 
 from typing import OrderedDict, List, Union, Optional, Dict, Set
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from pathlib import Path
 import logging
 
 from .configloader import DivisionsConfiguration, DivisionRule, DivisionType
 from .thread import Thread, Post
+from .postrender import PostRender
 
 
 @dataclass
 class OutputsGenerator:
 
-    posts: OrderedDict[int, Post]
+    post_pool: OrderedDict[int, Post]
 
     output_folder_path: Path
 
@@ -23,16 +24,21 @@ class OutputsGenerator:
     root_division_rules: [DivisionRule]
     root_title: str
 
-    state: "OutputsGenerator.State"
+    state: "OutputsGenerator.GlobalState"
 
     @dataclass(frozen=True)
     class OutputFile:
         title: str
 
     @dataclass
-    class State:
+    class GlobalState:
         unprocessed_post_ids: OrderedDict[int, None]
         after_text: str = None
+
+    @dataclass
+    class InFileState:
+        expanded_post_ids: Set[int]  # = field(default_factory=set)
+        post_render: PostRender
 
     @staticmethod
     def generate_outputs(output_folder_path: Path, thread: Thread, configuration: DivisionsConfiguration):
@@ -42,7 +48,7 @@ class OutputsGenerator:
     def __init__(self, output_folder_path: Path, thread: Thread, configuration: DivisionsConfiguration):
         cfg = configuration
 
-        self.posts = thread.flattened_post_dict()
+        self.post_pool = thread.flattened_post_dict()
         self.output_folder_path = output_folder_path
         self.defaults = cfg.defaults
         self.po_cookies = cfg.po_cookies
@@ -50,9 +56,9 @@ class OutputsGenerator:
         self.root_title = cfg.title
 
         posts_by_po = filter(lambda post: post.user_id in self.po_cookies,
-                             self.posts.values())
+                             self.post_pool.values())
         post_ids_by_po = map(lambda post: post.id, posts_by_po)
-        self.state = OutputsGenerator.State(
+        self.global_state = OutputsGenerator.GlobalState(
             unprocessed_post_ids=OrderedDict(
                 map(lambda id: (id, None), post_ids_by_po))
         )
@@ -66,16 +72,26 @@ class OutputsGenerator:
                 parent_nest_level=0,
                 rule=rule,
                 is_last_part=(i == len(self.root_division_rules)-1),
-                expanded_post_ids=set(),
             )
 
     def __generate(self,
                    parent_titles: List[str], parent_nest_level: int,
                    rule: DivisionRule, is_last_part: bool,
-                   expanded_post_ids: Set[int]) -> Union[str, "OutputsGenerator.OutputFile"]:
+                   in_file_state: Optional["OutputsGenerator.InFileState"] = None
+                   ) -> Union[str, "OutputsGenerator.OutputFile"]:
         if rule.divisionType == DivisionType.FILE:
             nest_level = 1
             expanded_post_ids = set()
+            in_file_state = OutputsGenerator.InFileState(
+                expanded_post_ids=expanded_post_ids,
+                post_render=PostRender(
+                    post_pool=self.post_pool,
+                    po_cookies=self.po_cookies,
+                    expanded_post_ids=expanded_post_ids,
+                ),
+            )
+        elif in_file_state == None:
+            raise "what? in __generate"
         else:
             nest_level = parent_nest_level+1
 
@@ -106,7 +122,7 @@ class OutputsGenerator:
             is_last_part=is_last_part,
             titles=titles,
             nest_level=nest_level,
-            expanded_post_ids=expanded_post_ids,
+            in_file_state=in_file_state,
         )
 
         self_output = ""
@@ -115,14 +131,14 @@ class OutputsGenerator:
             self_output += self.__generate_only(
                 only_ids=rule.match_rule.ids,
                 post_rules=rule.post_rules,
-                expanded_post_ids=expanded_post_ids,
+                in_file_state=in_file_state,
             )
         elif isinstance(rule.match_rule, DivisionRule.MatchUntil) or is_leftover:
             self_output += self.__generate_until(
                 until=rule.match_rule,
                 post_rules=rule.post_rules,
                 is_leftover=is_leftover,
-                expanded_post_ids=expanded_post_ids,
+                in_file_state=in_file_state,
             )
 
         if is_leftover:
@@ -149,16 +165,16 @@ class OutputsGenerator:
             if excluded_id > match_until_id:
                 logging.warning(
                     f'excluded id {excluded_id} greater than upper bound {match_until_id}')
-            if excluded_id not in self.state.unprocessed_post_ids:
+            if excluded_id not in self.global_state.unprocessed_post_ids:
                 logging.warning(
                     f'unnecessary excluded id {excluded_id}')
             else:
-                self.state.unprocessed_post_ids.pop(excluded_id)
+                self.global_state.unprocessed_post_ids.pop(excluded_id)
 
     def __generate_children(self,
                             rules: [DivisionRule],
                             is_last_part: bool, titles: str, nest_level: int,
-                            expanded_post_ids: Set[int]):
+                            in_file_state: "OutputsGenerator.InFileState"):
         children_output = ""
         for (i, child_rule) in enumerate(rules):
             child_is_last_part = is_last_part and (
@@ -168,7 +184,7 @@ class OutputsGenerator:
                 parent_nest_level=nest_level,
                 rule=child_rule,
                 is_last_part=child_is_last_part,
-                expanded_post_ids=expanded_post_ids,
+                in_file_state=in_file_state,
             )
 
             if isinstance(_child_output, str):
@@ -183,7 +199,7 @@ class OutputsGenerator:
     def __generate_only(self,
                         only_ids: List[int],
                         post_rules: Optional[Dict[int, DivisionRule.PostRule]],
-                        expanded_post_ids: Set[int]):
+                        in_file_state: "OutputsGenerator.InFileState"):
         output = ""
         for id in only_ids:
             expand_quote_links = None
@@ -191,24 +207,24 @@ class OutputsGenerator:
                 expand_quote_links = post_rules[id].expand_quote_links
             expand_quote_links = expand_quote_links or self.defaults.expand_quote_links
 
-            output += self.posts[id].markdown(
-                posts=self.posts,
-                po_cookies=self.po_cookies,
-                expand_quote_links=expand_quote_links,
-                expanded_post_ids=expanded_post_ids,
+            output += in_file_state.post_render.render(
+                self.post_pool[id],
+                options=PostRender.Options(
+                    expand_quote_links=expand_quote_links,
+                ),
             ) + "\n"
 
-            self.state.unprocessed_post_ids.pop(id, None)
+            self.global_state.unprocessed_post_ids.pop(id, None)
 
         return output
 
     def __generate_until(self,
                          until: DivisionRule.MatchUntil,
                          post_rules: Optional[Dict[int, DivisionRule.PostRule]],
-                         is_leftover: bool, expanded_post_ids: Set[int]):
+                         is_leftover: bool, in_file_state: "OutputsGenerator.InFileState"):
         output = ""
-        while len(self.state.unprocessed_post_ids.keys()) != 0:
-            id = list(self.state.unprocessed_post_ids.keys())[0]
+        while len(self.global_state.unprocessed_post_ids.keys()) != 0:
+            id = list(self.global_state.unprocessed_post_ids.keys())[0]
 
             until_text = None
             if not is_leftover:
@@ -222,19 +238,19 @@ class OutputsGenerator:
                 expand_quote_links = post_rules[id].expand_quote_links
             expand_quote_links = expand_quote_links or self.defaults.expand_quote_links
 
-            post = self.posts[id]
-            output += post.markdown(
-                self.posts,
-                po_cookies=self.po_cookies,
-                after_text=self.state.after_text,
-                until_text=until_text,
-                expand_quote_links=expand_quote_links,
-                expanded_post_ids=expanded_post_ids,
+            post = self.post_pool[id]
+            output += in_file_state.post_render.render(
+                post,
+                options=PostRender.Options(
+                    expand_quote_links=expand_quote_links,
+                    after_text=self.global_state.after_text,
+                    until_text=until_text,
+                ),
             ) + "\n"
 
-            self.state.after_text = until_text
+            self.global_state.after_text = until_text
             if until_text != None:
                 break
             else:
-                self.state.unprocessed_post_ids.pop(id)
+                self.global_state.unprocessed_post_ids.pop(id)
         return output
