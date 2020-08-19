@@ -20,7 +20,7 @@ import yaml
 # this library
 from src.configloader import DivisionsConfiguration
 from src.thread import Thread
-from src.generating import generate_outputs
+from src.generating import OutputsGenerator
 
 
 def main(args: List[str]):
@@ -48,7 +48,7 @@ def main(args: List[str]):
     output_folder_path = div_cfg.root_folder_path / "book"
     rmtree(output_folder_path, ignore_errors=True)
     output_folder_path.mkdir(parents=True)
-    generate_outputs(
+    OutputsGenerator.generate_outputs(
         output_folder_path=output_folder_path,
         thread=thread,
         configuration=div_cfg)

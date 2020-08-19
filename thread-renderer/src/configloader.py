@@ -18,7 +18,7 @@ class DivisionsConfiguration:
     title: str
     po_cookies: List[str]
     defaults: "DivisionsConfiguration.Defaults"
-    divisionRules: List["DivisionRule"]
+    division_rules: List["DivisionRule"]
 
     @dataclass(frozen=True)
     class Defaults:
@@ -41,7 +41,7 @@ class DivisionsConfiguration:
             po = [po]
         defaults = DivisionsConfiguration.Defaults.load_from_object(
             obj.get("defaults", None))
-        divisionRules = obj.get("divisions", list())
+        division_rules = obj.get("divisions", list())
 
         return DivisionsConfiguration(
             root_folder_path=root_folder_path,
@@ -49,8 +49,8 @@ class DivisionsConfiguration:
             title=title,
             po_cookies=po,
             defaults=defaults,
-            divisionRules=list(map(lambda d: DivisionRule.load_from_object(d),
-                                   divisionRules))
+            division_rules=list(map(lambda d: DivisionRule.load_from_object(d),
+                                    division_rules))
         )
 
 
