@@ -303,8 +303,18 @@ class OutputsGenerator:
 
     @staticmethod
     def __generate_toc(
+        titles: "OutputsGenerator.InFileState.Title",
+            toc_type: DivisionsConfiguration.TOC) -> str:
+        if toc_type in (DivisionsConfiguration.TOC.DETAILS_MARGIN, DivisionsConfiguration.TOC.DETAILS_BLOCKQUOTE):
+            return OutputsGenerator.__generate_toc_using_details(
+                titles,
+                uses_blockquote=toc_type == DivisionsConfiguration.TOC.DETAILS_BLOCKQUOTE)
+        raise f"unimplemented toc_type: {toc_type}"
+
+    @staticmethod
+    def __generate_toc_using_details(
             titles: "OutputsGenerator.InFileState.Title",
-            toc_type: DivisionsConfiguration.TOC):
+            uses_blockquote: bool) -> str:
 
         toc = ""
 
@@ -328,16 +338,40 @@ class OutputsGenerator:
                         summary = '<span style="color: red; font-style: italic">缺失</span>'
                         title_href = '#'
 
+                    if uses_blockquote:
+                        toc += "> " * (current_level - 1)
                     details = f'<details'
                     if current_level <= 2:  # TODO: 允许自定义深度
                         details += ' open'
-                    details += f' style="{DETAILS_STYLE}; background-color: #80808020"><summary><a href="{title_href}">{summary}</a></summary>'
+                    if not uses_blockquote:
+                        details += f' style="{DETAILS_STYLE}; background-color: #80808020"'
+                    details += f'><summary><a href="{title_href}">{summary}</a></summary>'
                     toc += details
+                    if uses_blockquote:
+                        toc += "\n"
+                        toc += "> " * (current_level - 1)
+                        toc += "\n"
                     current_level += 1
             else:
-                toc += f'<li style="{DETAILS_STYLE}"><a href="{title_href}">{title}</a></li>'
+                if uses_blockquote:
+                    toc += "> " * (current_level - 1)
+                li = f'<li'
+                if not uses_blockquote:
+                    li += f' style="{DETAILS_STYLE}"'
+                li += f'><a href="{title_href}">{title}</a></li>'
+                toc += li
+                if uses_blockquote:
+                    toc += "\n"
+                    toc += "> " * (current_level - 1)
+                    toc += "\n"
                 while next_level < current_level:
-                    toc += '</details>'
                     current_level -= 1
+                    if uses_blockquote:
+                        toc += "> " * (current_level - 1)
+                    toc += '</details>'
+                    if uses_blockquote:
+                        toc += "\n"
+                        toc += "> " * (current_level - 1)
+                        toc += "\n"
 
         return toc + "\n"

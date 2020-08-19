@@ -36,7 +36,7 @@ class DivisionsConfiguration:
 
     class TOC(Enum):
         DETAILS_MARGIN = auto()
-        # DETAILS_BLOCKQUOTE = auto()
+        DETAILS_BLOCKQUOTE = auto()
         # LIST = auto()
 
     @staticmethod
@@ -56,6 +56,8 @@ class DivisionsConfiguration:
         else:
             if toc == True or toc == "details" or toc == "details-margin":
                 toc = DivisionsConfiguration.TOC.DETAILS_MARGIN
+            elif toc == "details-blockquote":
+                toc = DivisionsConfiguration.TOC.DETAILS_BLOCKQUOTE
             else:
                 raise f"unknown toc type: {toc}"
 

@@ -5,7 +5,7 @@ po: fxc8mDE
 
 defaults:
   expand-quote-links: false
-toc: details-margin # false (or 'null') | 'details-margin' (or 'details', 'true') | 'details-blockquote' | 'list'
+toc: details-blockquote # false (or 'null') | 'details-margin' (or 'details', 'true') | 'details-blockquote' | 'list'
 
 divisions:
   - title: 原文
