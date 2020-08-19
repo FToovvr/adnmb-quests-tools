@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import OrderedDict, List, Union, Optional, Dict
+from typing import OrderedDict, List, Union, Optional, Dict, Set
 from dataclasses import dataclass
 
 from pathlib import Path
@@ -66,13 +66,16 @@ class OutputsGenerator:
                 parent_nest_level=0,
                 rule=rule,
                 is_last_part=(i == len(self.root_division_rules)-1),
+                expanded_post_ids=set(),
             )
 
     def __generate(self,
                    parent_titles: List[str], parent_nest_level: int,
-                   rule: DivisionRule, is_last_part: bool) -> Union[str, "OutputsGenerator.OutputFile"]:
+                   rule: DivisionRule, is_last_part: bool,
+                   expanded_post_ids: Set[int]) -> Union[str, "OutputsGenerator.OutputFile"]:
         if rule.divisionType == DivisionType.FILE:
             nest_level = 1
+            expanded_post_ids = set()
         else:
             nest_level = parent_nest_level+1
 
@@ -103,6 +106,7 @@ class OutputsGenerator:
             is_last_part=is_last_part,
             titles=titles,
             nest_level=nest_level,
+            expanded_post_ids=expanded_post_ids,
         )
 
         self_output = ""
@@ -111,12 +115,14 @@ class OutputsGenerator:
             self_output += self.__generate_only(
                 only_ids=rule.match_rule.ids,
                 post_rules=rule.post_rules,
+                expanded_post_ids=expanded_post_ids,
             )
         elif isinstance(rule.match_rule, DivisionRule.MatchUntil) or is_leftover:
             self_output += self.__generate_until(
                 until=rule.match_rule,
                 post_rules=rule.post_rules,
-                is_leftover=is_leftover
+                is_leftover=is_leftover,
+                expanded_post_ids=expanded_post_ids,
             )
 
         if is_leftover:
@@ -149,7 +155,10 @@ class OutputsGenerator:
             else:
                 self.state.unprocessed_post_ids.pop(excluded_id)
 
-    def __generate_children(self, rules: [DivisionRule], is_last_part: bool, titles: str, nest_level: int):
+    def __generate_children(self,
+                            rules: [DivisionRule],
+                            is_last_part: bool, titles: str, nest_level: int,
+                            expanded_post_ids: Set[int]):
         children_output = ""
         for (i, child_rule) in enumerate(rules):
             child_is_last_part = is_last_part and (
@@ -159,6 +168,7 @@ class OutputsGenerator:
                 parent_nest_level=nest_level,
                 rule=child_rule,
                 is_last_part=child_is_last_part,
+                expanded_post_ids=expanded_post_ids,
             )
 
             if isinstance(_child_output, str):
@@ -170,7 +180,10 @@ class OutputsGenerator:
                 raise "what? in generate_markdown_outputs"
         return children_output
 
-    def __generate_only(self, only_ids: List[int], post_rules: Optional[Dict[int, DivisionRule.PostRule]]):
+    def __generate_only(self,
+                        only_ids: List[int],
+                        post_rules: Optional[Dict[int, DivisionRule.PostRule]],
+                        expanded_post_ids: Set[int]):
         output = ""
         for id in only_ids:
             expand_quote_links = None
@@ -182,6 +195,7 @@ class OutputsGenerator:
                 posts=self.posts,
                 po_cookies=self.po_cookies,
                 expand_quote_links=expand_quote_links,
+                expanded_post_ids=expanded_post_ids,
             ) + "\n"
 
             self.state.unprocessed_post_ids.pop(id, None)
@@ -191,7 +205,7 @@ class OutputsGenerator:
     def __generate_until(self,
                          until: DivisionRule.MatchUntil,
                          post_rules: Optional[Dict[int, DivisionRule.PostRule]],
-                         is_leftover: bool):
+                         is_leftover: bool, expanded_post_ids: Set[int]):
         output = ""
         while len(self.state.unprocessed_post_ids.keys()) != 0:
             id = list(self.state.unprocessed_post_ids.keys())[0]
@@ -215,6 +229,7 @@ class OutputsGenerator:
                 after_text=self.state.after_text,
                 until_text=until_text,
                 expand_quote_links=expand_quote_links,
+                expanded_post_ids=expanded_post_ids,
             ) + "\n"
 
             self.state.after_text = until_text

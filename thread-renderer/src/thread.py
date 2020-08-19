@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from __future__ import annotations
-from typing import Dict, List, OrderedDict, Optional, Any, Tuple, Union
+from typing import Dict, List, OrderedDict, Optional, Any, Tuple, Union, Set
 from dataclasses import dataclass
 
 from pathlib import Path
@@ -125,22 +125,28 @@ class Post:
     def markdown(
             self,
             posts: OrderedDict[int, Post], po_cookies: List[str],
+            expand_quote_links: Union[bool, List[int]],
+            expanded_post_ids: Set[int],
             after_text: Optional[str] = None,
-            until_text: Optional[str] = None,
-            expand_quote_links: Union[bool, List[int]] = True) -> str:
+            until_text: Optional[str] = None) -> str:
         return "\n".join(self.markdown_lines(
             posts=posts, po_cookies=po_cookies,
             after_text=after_text, until_text=until_text,
-            expand_quote_links=expand_quote_links)) + "\n"
+            expand_quote_links=expand_quote_links,
+            expanded_post_ids=expanded_post_ids,
+        )) + "\n"
 
     def markdown_lines(
             self,
             posts: OrderedDict[int, Post], po_cookies: List[str],
+            expand_quote_links: Union[bool, List[int]],
+            expanded_post_ids: Set[int],
             after_text: Optional[str] = None,
-            until_text: Optional[str] = None,
-            expand_quote_links: Union[bool, List[int]] = True) -> str:
+            until_text: Optional[str] = None) -> str:
 
         lines = []
+
+        expanded_post_ids.add(self.id)
 
         # 生成头部
         header_items = [f"No.{self.id}"]
@@ -187,6 +193,7 @@ class Post:
                 lines.extend(Post.__generate_content(
                     posts=posts, po_cookies=po_cookies,
                     line=line, expand_quote_links=expand_quote_links,
+                    expanded_post_ids=expanded_post_ids,
                 ))
 
         if until_text != None:
@@ -198,14 +205,24 @@ class Post:
     @staticmethod
     def __generate_content(
             posts: OrderedDict[int, Post], po_cookies: List[str],
-            line: str, expand_quote_links: Union[bool, List[int]]) -> List[str]:
+            line: str, expand_quote_links: Union[bool, List[int]],
+            expanded_post_ids: Set[int]) -> List[str]:
         lines = []
         unappened_content = ""
         for (content_before, quote_link_id) in Post.split_line_by_quote_link(line):
-            if isinstance(expand_quote_links, list) and quote_link_id != None and (
-                    quote_link_id not in expand_quote_links):
+            if quote_link_id == None:
+                unappened_content += content_before
+                continue
+
+            should_expand = expand_quote_links == True or (
+                quote_link_id in expand_quote_links)
+            should_expand = should_expand and quote_link_id not in expanded_post_ids
+
+            if not should_expand:
                 unappened_content += f'{content_before}<font color="#789922">&gt;&gt;No.{quote_link_id}</font>'
             else:
+                expanded_post_ids.add(quote_link_id)
+
                 line = unappened_content + content_before
                 unappened_content = ""
                 if line.strip() != "":
@@ -216,7 +233,11 @@ class Post:
                         lines.append(f"> {quote_link_id} 【串外引用】")
                     else:
                         lines.extend(
-                            posts[quote_link_id].markdown_lines(posts, po_cookies=po_cookies))
+                            posts[quote_link_id].markdown_lines(
+                                posts, po_cookies=po_cookies,
+                                expand_quote_links=expand_quote_links,
+                                expanded_post_ids=expanded_post_ids,
+                            ))
         if unappened_content.strip() != "":
             lines.append(f"<span>{unappened_content}</span>  ")
         lines.append("")
