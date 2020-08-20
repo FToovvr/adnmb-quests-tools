@@ -133,12 +133,13 @@ class OutputsGenerator:
                 OutputsGenerator.InFileState.Title(rule.title, nest_level_in_parent, title_number_in_parent))
 
         print(f'{"#" * nest_level} {shown_title}')
-        if rule.divisionType != DivisionType.FILE:  # FILE 输出标题延后
+        if rule.divisionType != DivisionType.FILE:
+            # FILE 输出标题延后
             output += OutputsGenerator.__generate_heading(
                 shown_title, nest_level, title_number) + "\n"
-
-        if rule.intro != None:
-            output += f"{rule.intro}\n\n"
+            # FILE 输出 intro 延后
+            if rule.intro != None:
+                output += f"{rule.intro}\n\n"
 
         children_output = self.__generate_children(
             rule.children,
@@ -178,6 +179,8 @@ class OutputsGenerator:
             _output = output
             output = OutputsGenerator.__generate_heading(
                 shown_title, 1, title_number) + "\n"
+            if rule.intro != None:
+                output += f"{rule.intro}\n\n"
             if self.toc != None:
                 toc = OutputsGenerator.__generate_toc(
                     in_file_state.titles, toc_cfg=self.toc)
