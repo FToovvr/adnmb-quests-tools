@@ -65,7 +65,7 @@ def parse_args(prog: str, args: List[str]) -> argparse.Namespace:
     parser.add_argument("-o", "--output",
                         help="输出文件夹路径，默认为配置文件同目录下的`book`文件夹", metavar="<path to output folder>",
                         type=Path, dest="output_folder_path")
-    parser.add_argument("--overwrite-output",
+    parser.add_argument("--allow-overwrite-output",
                         help="如果输出文件夹存在，删除并重建该文件夹",
                         dest="overwrite_output", action="store_true", default=False)
     parser.add_argument("--log-config", "--logging-configuration",
