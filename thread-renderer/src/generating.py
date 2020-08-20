@@ -45,36 +45,48 @@ class OutputsGenerator:
         def __post_init__(self):
             self.title_manager = OutputsGenerator.InFileState.TitleManager()
 
-        class Title(NamedTuple):
-            name: str
-            nest_level: int
-            number: int
-
-            def generate_heading(self):
-                heading = f'<h{self.nest_level} id="{self.get_heading_id()}">'
-                heading += self.name
-                heading += f'</h{self.nest_level}>'
-                return heading
-
-            def get_heading_id(self):
-                id = urllib.parse.quote(self.name)
-                if self.number != 1:
-                    id += f"-{self.number-1}"
-                return id
-
         @dataclass
         class TitleManager:
-            titles: List["OutputsGenerator.InFileState.Title"] = field(
+            titles: List["OutputsGenerator.InFileState.Topic"] = field(
                 default_factory=list)
             title_counts: Dict[str, int] = field(default_factory=dict)
 
-            def new_title(self, name: str, nest_level: int) -> "OutputsGenerator.InFileState.Title":
-                title_number = self.title_counts.get(name, 0) + 1
-                self.title_counts[name] = title_number
-                title = OutputsGenerator.InFileState.Title(
-                    name, nest_level, title_number)
+            def new_title(self,
+                          name: str, nest_level: int,
+                          external_name: Optional[str] = None
+                          ) -> "OutputsGenerator.InFileState.Title":
+                number = self.title_counts.get(name, 0) + 1
+                self.title_counts[name] = number
+                title = OutputsGenerator.Topic(
+                    name, nest_level=nest_level,
+                    number=number, external_name=external_name,
+                )
                 self.titles.append(title)
                 return title
+
+    class Topic(NamedTuple):
+        name: str
+        nest_level: int
+        number: int
+        external_name: Optional[str] = None
+
+        def generate_link_for_toc(self):
+            if self.external_name != None:
+                return f'⎆ <a href="{self.external_name}.md">{self.name}</a>'
+            else:
+                return f'<a href="#{self.get_heading_id()}">{self.name}</a>'
+
+        def generate_heading(self):
+            heading = f'<h{self.nest_level} id="{self.get_heading_id()}">'
+            heading += self.name
+            heading += f'</h{self.nest_level}>'
+            return heading
+
+        def get_heading_id(self):
+            id = urllib.parse.quote(self.name)
+            if self.number != 1:
+                id += f"-{self.number-1}"
+            return id
 
     @staticmethod
     def generate_outputs(output_folder_path: Path, thread: Thread, configuration: DivisionsConfiguration):
@@ -116,10 +128,15 @@ class OutputsGenerator:
                    rule: DivisionRule, is_last_part: bool,
                    in_file_state: Optional["OutputsGenerator.InFileState"] = None
                    ) -> Optional[str]:
+
+        titles = list(parent_titles)
+        titles.append(rule.title)
+
         if rule.divisionType == DivisionType.FILE:
+            file_title = "·".join(titles[1:])
             if in_file_state != None:
                 title_in_parent = in_file_state.title_manager.new_title(
-                    rule.title, parent_nest_level+1)
+                    rule.title, parent_nest_level+1, external_name=file_title)
             else:
                 title_in_parent = None
 
@@ -146,8 +163,6 @@ class OutputsGenerator:
 
         output = ""
 
-        titles = list(parent_titles)
-        titles.append(rule.title)
         if rule.divisionType == DivisionType.FILE:
             shown_title = "·".join(titles)
         else:
@@ -207,13 +222,12 @@ class OutputsGenerator:
                     in_file_state.title_manager.titles, toc_cfg=self.toc)
                 output += toc + "\n"
             output += _output + "\n"
-            title = "·".join(titles[1:])
-            output_file_path = self.output_folder_path / (title + ".md")
+            output_file_path = self.output_folder_path / (file_title + ".md")
             output_file_path.write_text(output)
 
             if title_in_parent != None:
                 parent_content = title_in_parent.generate_heading() + "\n\n"
-                parent_content += f"见[{title}]({title}.md)\n"
+                parent_content += f"见[{file_title}]({file_title}.md)\n"
                 return parent_content
             return None
         elif rule.divisionType == DivisionType.SECTION:
@@ -335,18 +349,15 @@ class OutputsGenerator:
             if i+1 < len(titles):
                 next_level = titles[i+1].nest_level
 
-            title.name
-            title_href = "#" + title.get_heading_id()
             DETAILS_STYLE = "margin: 8px 0px 8px 16px; padding: 1px"
             if next_level > current_level:
                 first = True
                 while next_level > current_level:
                     if first:
-                        summary = title.name
+                        summary = title.generate_link_for_toc()
                         first = False
                     else:
                         summary = '<span style="color: red; font-style: italic">缺失</span>'
-                        title_href = '#'
 
                     if toc_cfg.use_blockquote:
                         toc += "> " * (current_level - 1)
@@ -355,7 +366,7 @@ class OutputsGenerator:
                         details += ' open'
                     if toc_cfg.use_margin:
                         details += f' style="{DETAILS_STYLE}; background-color: #80808020"'
-                    details += f'><summary><a href="{title_href}">{summary}</a></summary>'
+                    details += f'><summary>{summary}</summary>'
                     toc += details
                     if toc_cfg.use_blockquote:
                         toc += "\n"
@@ -368,7 +379,7 @@ class OutputsGenerator:
                 li = f'<li'
                 if toc_cfg.use_margin:
                     li += f' style="{DETAILS_STYLE}"'
-                li += f'><a href="{title_href}">{title.name}</a></li>'
+                li += f'>{title.generate_link_for_toc()}</li>'
                 toc += li
                 if toc_cfg.use_blockquote:
                     toc += "\n"
