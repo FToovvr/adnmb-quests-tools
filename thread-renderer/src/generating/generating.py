@@ -7,9 +7,11 @@ from pathlib import Path
 import logging
 import urllib
 
-from .configloader import DivisionsConfiguration, DivisionRule, DivisionType
-from .thread import Thread, Post
-from .postrender import PostRender
+from ..configloader import DivisionsConfiguration, DivisionRule, DivisionType
+from ..thread import Thread, Post
+from ..postrender import PostRender
+
+from .topic import Topic, TopicManager
 
 
 @dataclass
@@ -39,54 +41,7 @@ class OutputsGenerator:
         expanded_post_ids: Set[int]  # = field(default_factory=set)
         post_render: PostRender
 
-        title_manager: "OutputsGenerator.InFileState.TitleManager" = field(
-            init=False)  # OutputsGenerator.InFileState.TitleManager
-
-        def __post_init__(self):
-            self.title_manager = OutputsGenerator.InFileState.TitleManager()
-
-        @dataclass
-        class TitleManager:
-            titles: List["OutputsGenerator.InFileState.Topic"] = field(
-                default_factory=list)
-            title_counts: Dict[str, int] = field(default_factory=dict)
-
-            def new_title(self,
-                          name: str, nest_level: int,
-                          external_name: Optional[str] = None
-                          ) -> "OutputsGenerator.InFileState.Title":
-                number = self.title_counts.get(name, 0) + 1
-                self.title_counts[name] = number
-                title = OutputsGenerator.Topic(
-                    name, nest_level=nest_level,
-                    number=number, external_name=external_name,
-                )
-                self.titles.append(title)
-                return title
-
-    class Topic(NamedTuple):
-        name: str
-        nest_level: int
-        number: int
-        external_name: Optional[str] = None
-
-        def generate_link_for_toc(self):
-            if self.external_name != None:
-                return f'⎆ <a href="{self.external_name}.md">{self.name}</a>'
-            else:
-                return f'<a href="#{self.get_heading_id()}">{self.name}</a>'
-
-        def generate_heading(self):
-            heading = f'<h{self.nest_level} id="{self.get_heading_id()}">'
-            heading += self.name
-            heading += f'</h{self.nest_level}>'
-            return heading
-
-        def get_heading_id(self):
-            id = urllib.parse.quote(self.name)
-            if self.number != 1:
-                id += f"-{self.number-1}"
-            return id
+        title_manager: TopicManager = field(default_factory=TopicManager)
 
     @staticmethod
     def generate_outputs(output_folder_path: Path, thread: Thread, configuration: DivisionsConfiguration):
@@ -135,7 +90,7 @@ class OutputsGenerator:
         if rule.divisionType == DivisionType.FILE:
             file_title = "·".join(titles[1:])
             if in_file_state != None:
-                title_in_parent = in_file_state.title_manager.new_title(
+                title_in_parent = in_file_state.title_manager.new_topic(
                     rule.title, parent_nest_level+1, external_name=file_title)
             else:
                 title_in_parent = None
@@ -167,7 +122,7 @@ class OutputsGenerator:
             shown_title = "·".join(titles)
         else:
             shown_title = rule.title
-        title = in_file_state.title_manager.new_title(shown_title, nest_level)
+        title = in_file_state.title_manager.new_topic(shown_title, nest_level)
         logging.debug(f'{"#" * nest_level} {title.name}')
 
         if rule.divisionType != DivisionType.FILE:
@@ -204,7 +159,7 @@ class OutputsGenerator:
         if is_leftover:
             output += children_output + "\n"
             if self_output != "":
-                leftover_title = in_file_state.title_manager.new_title(
+                leftover_title = in_file_state.title_manager.new_topic(
                     "尚未整理", nest_level+1)
                 output += leftover_title.generate_heading() + "\n\n"
                 output += self_output + "\n"
@@ -219,7 +174,7 @@ class OutputsGenerator:
                 output += f"{rule.intro}\n\n"
             if self.toc != None:
                 toc = OutputsGenerator.__generate_toc(
-                    in_file_state.title_manager.titles, toc_cfg=self.toc)
+                    in_file_state.title_manager.topics, toc_cfg=self.toc)
                 output += toc + "\n"
             output += _output + "\n"
             output_file_path = self.output_folder_path / (file_title + ".md")
