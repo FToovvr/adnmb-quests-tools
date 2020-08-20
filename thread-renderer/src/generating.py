@@ -39,14 +39,42 @@ class OutputsGenerator:
         expanded_post_ids: Set[int]  # = field(default_factory=set)
         post_render: PostRender
 
-        titles: List["OutputsGenerator.InFileState.Title"] = field(
-            default_factory=list)  # (title, nest_level, number)
-        title_counts: Dict[str, int] = field(default_factory=dict)
+        title_manager: "OutputsGenerator.InFileState.TitleManager" = field(
+            init=False)  # OutputsGenerator.InFileState.TitleManager
+
+        def __post_init__(self):
+            self.title_manager = OutputsGenerator.InFileState.TitleManager()
 
         class Title(NamedTuple):
-            title: str
+            name: str
             nest_level: int
             number: int
+
+            def generate_heading(self):
+                heading = f'<h{self.nest_level} id="{self.get_heading_id()}">'
+                heading += self.name
+                heading += f'</h{self.nest_level}>'
+                return heading
+
+            def get_heading_id(self):
+                id = urllib.parse.quote(self.name)
+                if self.number != 1:
+                    id += f"-{self.number-1}"
+                return id
+
+        @dataclass
+        class TitleManager:
+            titles: List["OutputsGenerator.InFileState.Title"] = field(
+                default_factory=list)
+            title_counts: Dict[str, int] = field(default_factory=dict)
+
+            def new_title(self, name: str, nest_level: int) -> "OutputsGenerator.InFileState.Title":
+                title_number = self.title_counts.get(name, 0) + 1
+                self.title_counts[name] = title_number
+                title = OutputsGenerator.InFileState.Title(
+                    name, nest_level, title_number)
+                self.titles.append(title)
+                return title
 
     @staticmethod
     def generate_outputs(output_folder_path: Path, thread: Thread, configuration: DivisionsConfiguration):
@@ -89,8 +117,11 @@ class OutputsGenerator:
                    in_file_state: Optional["OutputsGenerator.InFileState"] = None
                    ) -> Optional[str]:
         if rule.divisionType == DivisionType.FILE:
-            nest_level_in_parent = parent_nest_level+1
-            parent_in_file_state = in_file_state
+            if in_file_state != None:
+                title_in_parent = in_file_state.title_manager.new_title(
+                    rule.title, parent_nest_level+1)
+            else:
+                title_in_parent = None
 
             nest_level = 1
             expanded_post_ids = set()
@@ -121,22 +152,12 @@ class OutputsGenerator:
             shown_title = "·".join(titles)
         else:
             shown_title = rule.title
-        title_number = in_file_state.title_counts.get(shown_title, 0) + 1
-        in_file_state.title_counts[shown_title] = title_number
-        in_file_state.titles.append(
-            OutputsGenerator.InFileState.Title(shown_title, nest_level, title_number))
-        if rule.divisionType == DivisionType.FILE and parent_in_file_state != None:
-            title_number_in_parent = parent_in_file_state.title_counts.get(
-                rule.title, 0) + 1
-            parent_in_file_state.title_counts[rule.title] = title_number_in_parent
-            parent_in_file_state.titles.append(
-                OutputsGenerator.InFileState.Title(rule.title, nest_level_in_parent, title_number_in_parent))
+        title = in_file_state.title_manager.new_title(shown_title, nest_level)
+        logging.debug(f'{"#" * nest_level} {title.name}')
 
-        logging.debug(f'{"#" * nest_level} {shown_title}')
         if rule.divisionType != DivisionType.FILE:
             # FILE 输出标题延后
-            output += OutputsGenerator.__generate_heading(
-                shown_title, nest_level, title_number) + "\n"
+            output += title.generate_heading() + "\n\n"
             # FILE 输出 intro 延后
             if rule.intro != None:
                 output += f"{rule.intro}\n\n"
@@ -168,8 +189,9 @@ class OutputsGenerator:
         if is_leftover:
             output += children_output + "\n"
             if self_output != "":
-                output += OutputsGenerator.__generate_heading(
-                    "尚未整理", nest_level+1, title_number) + "\n"
+                leftover_title = in_file_state.title_manager.new_title(
+                    "尚未整理", nest_level+1)
+                output += leftover_title.generate_heading() + "\n\n"
                 output += self_output + "\n"
         else:
             output += self_output + "\n"
@@ -177,22 +199,20 @@ class OutputsGenerator:
 
         if rule.divisionType == DivisionType.FILE:
             _output = output
-            output = OutputsGenerator.__generate_heading(
-                shown_title, 1, title_number) + "\n"
+            output = title.generate_heading() + "\n\n"
             if rule.intro != None:
                 output += f"{rule.intro}\n\n"
             if self.toc != None:
                 toc = OutputsGenerator.__generate_toc(
-                    in_file_state.titles, toc_cfg=self.toc)
+                    in_file_state.title_manager.titles, toc_cfg=self.toc)
                 output += toc + "\n"
             output += _output + "\n"
             title = "·".join(titles[1:])
             output_file_path = self.output_folder_path / (title + ".md")
             output_file_path.write_text(output)
 
-            if parent_in_file_state != None:
-                parent_content = OutputsGenerator.__generate_heading(
-                    rule.title, nest_level_in_parent+1, title_number_in_parent) + "\n"
+            if title_in_parent != None:
+                parent_content = title_in_parent.generate_heading() + "\n\n"
                 parent_content += f"见[{title}]({title}.md)\n"
                 return parent_content
             return None
@@ -294,19 +314,8 @@ class OutputsGenerator:
         return output
 
     @staticmethod
-    def __generate_heading(title: str, level: int, number: int):
-        return f'<h{level} id="{OutputsGenerator.__get_heading_id(title, number)}">{title}</h{level}>\n'
-
-    @staticmethod
-    def __get_heading_id(title: str, number: int):
-        id = urllib.parse.quote(title)
-        if number != 1:
-            id += f"-{number-1}"
-        return id
-
-    @staticmethod
     def __generate_toc(
-        titles: "OutputsGenerator.InFileState.Title",
+            titles: List["OutputsGenerator.InFileState.Title"],
             toc_cfg: Union[None, DivisionsConfiguration.TOCUsingDetails]) -> str:
         if isinstance(toc_cfg, DivisionsConfiguration.TOCUsingDetails):
             return OutputsGenerator.__generate_toc_using_details(
@@ -315,26 +324,25 @@ class OutputsGenerator:
 
     @staticmethod
     def __generate_toc_using_details(
-            titles: "OutputsGenerator.InFileState.Title",
+            titles: List["OutputsGenerator.InFileState.Title"],
             toc_cfg: DivisionsConfiguration.TOCUsingDetails) -> str:
 
         toc = ""
 
-        for (i, title_tuple) in enumerate(titles):
-            current_level = title_tuple.nest_level
+        for (i, title) in enumerate(titles):
+            current_level = title.nest_level
             next_level = 1
             if i+1 < len(titles):
                 next_level = titles[i+1].nest_level
 
-            title = title_tuple.title
-            title_href = "#" + \
-                OutputsGenerator.__get_heading_id(title, title_tuple.number)
+            title.name
+            title_href = "#" + title.get_heading_id()
             DETAILS_STYLE = "margin: 8px 0px 8px 16px; padding: 1px"
             if next_level > current_level:
                 first = True
                 while next_level > current_level:
                     if first:
-                        summary = title
+                        summary = title.name
                         first = False
                     else:
                         summary = '<span style="color: red; font-style: italic">缺失</span>'
@@ -360,7 +368,7 @@ class OutputsGenerator:
                 li = f'<li'
                 if toc_cfg.use_margin:
                     li += f' style="{DETAILS_STYLE}"'
-                li += f'><a href="{title_href}">{title}</a></li>'
+                li += f'><a href="{title_href}">{title.name}</a></li>'
                 toc += li
                 if toc_cfg.use_blockquote:
                     toc += "\n"
