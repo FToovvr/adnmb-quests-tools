@@ -132,7 +132,7 @@ class OutputsGenerator:
             parent_in_file_state.titles.append(
                 OutputsGenerator.InFileState.Title(rule.title, nest_level_in_parent, title_number_in_parent))
 
-        print(f'{"#" * nest_level} {shown_title}')
+        logging.debug(f'{"#" * nest_level} {shown_title}')
         if rule.divisionType != DivisionType.FILE:
             # FILE 输出标题延后
             output += OutputsGenerator.__generate_heading(
