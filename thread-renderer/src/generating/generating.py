@@ -12,6 +12,7 @@ from ..thread import Thread, Post
 from ..postrender import PostRender
 
 from .topic import Topic, TopicManager
+from .toc import generate_toc
 
 
 @dataclass
@@ -173,7 +174,7 @@ class OutputsGenerator:
             if rule.intro != None:
                 output += f"{rule.intro}\n\n"
             if self.toc != None:
-                toc = OutputsGenerator.__generate_toc(
+                toc = generate_toc(
                     in_file_state.title_manager.topics, toc_cfg=self.toc)
                 output += toc + "\n"
             output += _output + "\n"
@@ -281,73 +282,3 @@ class OutputsGenerator:
             else:
                 self.global_state.unprocessed_post_ids.pop(id)
         return output
-
-    @staticmethod
-    def __generate_toc(
-            titles: List["OutputsGenerator.InFileState.Title"],
-            toc_cfg: Union[None, DivisionsConfiguration.TOCUsingDetails]) -> str:
-        if isinstance(toc_cfg, DivisionsConfiguration.TOCUsingDetails):
-            return OutputsGenerator.__generate_toc_using_details(
-                titles, toc_cfg=toc_cfg)
-        raise f"unimplemented toc configuration: {toc_cfg}"
-
-    @staticmethod
-    def __generate_toc_using_details(
-            titles: List["OutputsGenerator.InFileState.Title"],
-            toc_cfg: DivisionsConfiguration.TOCUsingDetails) -> str:
-
-        toc = ""
-
-        for (i, title) in enumerate(titles):
-            current_level = title.nest_level
-            next_level = 1
-            if i+1 < len(titles):
-                next_level = titles[i+1].nest_level
-
-            DETAILS_STYLE = "margin: 8px 0px 8px 16px; padding: 1px"
-            if next_level > current_level:
-                first = True
-                while next_level > current_level:
-                    if first:
-                        summary = title.generate_link_for_toc()
-                        first = False
-                    else:
-                        summary = '<span style="color: red; font-style: italic">缺失</span>'
-
-                    if toc_cfg.use_blockquote:
-                        toc += "> " * (current_level - 1)
-                    details = f'<details'
-                    if current_level <= 2:  # TODO: 允许自定义深度
-                        details += ' open'
-                    if toc_cfg.use_margin:
-                        details += f' style="{DETAILS_STYLE}; background-color: #80808020"'
-                    details += f'><summary>{summary}</summary>'
-                    toc += details
-                    if toc_cfg.use_blockquote:
-                        toc += "\n"
-                        toc += "> " * (current_level - 1)
-                        toc += "\n"
-                    current_level += 1
-            else:
-                if toc_cfg.use_blockquote:
-                    toc += "> " * (current_level - 1)
-                li = f'<li'
-                if toc_cfg.use_margin:
-                    li += f' style="{DETAILS_STYLE}"'
-                li += f'>{title.generate_link_for_toc()}</li>'
-                toc += li
-                if toc_cfg.use_blockquote:
-                    toc += "\n"
-                    toc += "> " * (current_level - 1)
-                    toc += "\n"
-                while next_level < current_level:
-                    current_level -= 1
-                    if toc_cfg.use_blockquote:
-                        toc += "> " * (current_level - 1)
-                    toc += '</details>'
-                    if toc_cfg.use_blockquote:
-                        toc += "\n"
-                        toc += "> " * (current_level - 1)
-                        toc += "\n"
-
-        return toc + "\n"
