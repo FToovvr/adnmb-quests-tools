@@ -16,16 +16,23 @@ def generate_toc(
 
 def generate_toc_using_details(
         topics: List[Topic],
-        toc_cfg: DivisionsConfiguration.TOCUsingDetails
+        toc_cfg: DivisionsConfiguration.TOCUsingDetails,
+        uses_relative_levels: bool = False
 ) -> str:
 
     toc = ""
 
+    root_level = None
+    if not uses_relative_levels:
+        root_level = 1
+
     for (i, topic) in enumerate(topics):
-        current_level = topic.nest_level
-        next_level = 1
+        if root_level == None:
+            root_level = topic.nest_level
+        current_level = topic.nest_level - root_level
+        next_level = root_level-1
         if i+1 < len(topics):
-            next_level = topics[i+1].nest_level
+            next_level = topics[i+1].nest_level - root_level
 
         DETAILS_STYLE = "margin: 8px 0px 8px 16px; padding: 1px"
         if next_level > current_level:
@@ -38,9 +45,9 @@ def generate_toc_using_details(
                     summary = '<span style="color: red; font-style: italic">缺失</span>'
 
                 if toc_cfg.use_blockquote:
-                    toc += "> " * (current_level - 1)
+                    toc += "> " * current_level
                 details = f'<details'
-                if current_level <= 2:  # TODO: 允许自定义深度
+                if current_level+1 <= 2:  # TODO: 允许自定义深度
                     details += ' open'
                 if toc_cfg.use_margin:
                     details += f' style="{DETAILS_STYLE}; background-color: #80808020"'
@@ -48,12 +55,12 @@ def generate_toc_using_details(
                 toc += details
                 if toc_cfg.use_blockquote:
                     toc += "\n"
-                    toc += "> " * (current_level - 1)
+                    toc += "> " * current_level
                     toc += "\n"
                 current_level += 1
         else:
             if toc_cfg.use_blockquote:
-                toc += "> " * (current_level - 1)
+                toc += "> " * current_level
             li = f'<li'
             if toc_cfg.use_margin:
                 li += f' style="{DETAILS_STYLE}"'
@@ -61,16 +68,16 @@ def generate_toc_using_details(
             toc += li
             if toc_cfg.use_blockquote:
                 toc += "\n"
-                toc += "> " * (current_level - 1)
+                toc += "> " * current_level
                 toc += "\n"
             while next_level < current_level:
                 current_level -= 1
                 if toc_cfg.use_blockquote:
-                    toc += "> " * (current_level - 1)
+                    toc += "> " * current_level
                 toc += '</details>'
                 if toc_cfg.use_blockquote:
                     toc += "\n"
-                    toc += "> " * (current_level - 1)
+                    toc += "> " * current_level
                     toc += "\n"
 
     return toc + "\n"
