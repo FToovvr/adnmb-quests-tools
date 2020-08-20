@@ -319,7 +319,7 @@ class OutputsGenerator:
 
         for (i, title_tuple) in enumerate(titles):
             current_level = title_tuple.nest_level
-            next_level = 0
+            next_level = 1
             if i+1 < len(titles):
                 next_level = titles[i+1].nest_level
 
