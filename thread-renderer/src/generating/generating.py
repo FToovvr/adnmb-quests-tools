@@ -9,7 +9,7 @@ import urllib
 
 from ..configloader import DivisionsConfiguration, DivisionRule, DivisionType
 from ..thread import Thread, Post
-from ..postrender import PostRender
+from .postrender import PostRender
 
 from .topic import Topic, TopicManager
 from .toc import generate_toc
@@ -240,6 +240,7 @@ class OutputsGenerator:
                 self.post_pool[id],
                 options=PostRender.Options(
                     expand_quote_links=expand_quote_links,
+                    style=self.defaults.post_style,
                 ),
             ) + "\n"
 
@@ -272,6 +273,7 @@ class OutputsGenerator:
                 post,
                 options=PostRender.Options(
                     expand_quote_links=expand_quote_links,
+                    style=self.defaults.post_style,
                     after_text=self.global_state.after_text,
                     until_text=until_text,
                 ),

@@ -3,7 +3,8 @@
 from typing import OrderedDict, List, Set, Union, Optional, Tuple
 from dataclasses import dataclass
 
-from .thread import Post
+from ..thread import Post
+from ..configloader import DivisionsConfiguration
 
 
 @dataclass(frozen=True)
@@ -17,6 +18,7 @@ class PostRender:
     @dataclass
     class Options:
         expand_quote_links: Union[bool, List[int]]
+        style: DivisionsConfiguration.Defaults.PostStyle
         after_text: Optional[str] = None
         until_text: Optional[str] = None
 
@@ -35,11 +37,15 @@ class PostRender:
         self.expanded_post_ids.add(post.id)
 
         # 生成头部
-        lines.extend([self.__render_header_line(
+        header_line = self.__render_header_line(
             post,
             is_part=options.after_text != None or options.until_text != None,
             is_po=post.user_id in self.po_cookies
-        ), ""])
+        )
+        if options.style == DivisionsConfiguration.Defaults.PostStyle.DETAILS_BLOCKQUOTE:
+            first_line = f'<details open><summary>{header_line}</summary><hr/>'
+        else:
+            lines.extend([header_line, ""])
 
         # 生成图片部分
         if post.attachment_name != None:
@@ -78,15 +84,25 @@ class PostRender:
             lines.extend(
                 ["", '<span style="color: gray; font-size: smaller">（…）</span>  '])
 
-        return list(map(lambda line: f"> {line}", lines))
+        if options.style == DivisionsConfiguration.Defaults.PostStyle.DETAILS_BLOCKQUOTE:
+            last_line = '</details>'
+            # lines = list(map(lambda line: f"> {line}", lines))
+            lines.insert(0, first_line)
+            lines.insert(1, "")
+            lines.append(last_line)
+            lines.append('<hr style="visibility: hidden"/>')
+            # return lines
+            return list(map(lambda line: "> " + line, lines))
+        else:
+            return list(map(lambda line: "> " + line, lines))
 
     def __render_header_line(self, post: Post, is_part: bool, is_po: bool) -> str:
         header_items = [f"No.{post.id}"]
         if is_part:
             header_items.append("（部分）")
         header_items.extend([" ", f"{post.created_at.now}",
-                             " ", f"[P{post.page_number}]",
-                             f"(https://adnmb2.com/t/{post.thread_id}?page={post.page_number})"])
+                             " ", f'<a href="https://adnmb2.com/t/{post.thread_id}?page={post.page_number}">',
+                             f"P{post.page_number}", f'</a>'])
         if not is_po:
             header_items.extend([" ", f"ID:{post.user_id}"])
         return "".join(header_items)
@@ -131,7 +147,6 @@ class PostRender:
                 ))
         if unappened_content.strip() != "":
             lines.append(f"<span>{unappened_content}</span>  ")
-        lines.append("")
 
         return lines
 

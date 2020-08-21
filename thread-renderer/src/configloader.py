@@ -28,12 +28,27 @@ class DivisionsConfiguration:
     @dataclass(frozen=True)
     class Defaults:
         expand_quote_links: bool
+        post_style: "PostStyle"
+
+        class PostStyle(Enum):
+            BLOCKQUOTE = auto()
+            DETAILS_BLOCKQUOTE = auto()
 
         @staticmethod
         def load_from_object(obj: Optional[Dict[str, Any], None]) -> DivisionsConfiguration.Defaults:
             obj = obj or dict()
+
+            post_style = obj.get("post-style", None)
+            if post_style == None or post_style == "blockquote":
+                post_style = DivisionsConfiguration.Defaults.PostStyle.BLOCKQUOTE
+            elif post_style == "details-blockquote":
+                post_style = DivisionsConfiguration.Defaults.PostStyle.DETAILS_BLOCKQUOTE
+            else:
+                raise f"unknown post-style value: {post_style}"
+
             return DivisionsConfiguration.Defaults(
                 expand_quote_links=obj.get("expand-quote-links", True),
+                post_style=post_style,
             )
 
     @dataclass(frozen=True)
