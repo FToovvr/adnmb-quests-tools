@@ -159,6 +159,18 @@ class DivisionRule:
                 exclude = until.get("exclude", None)
                 if type(exclude) is int:
                     exclude = [exclude]
+                elif isinstance(exclude, list):
+                    # 支持将嵌套扁平化
+                    # 用于 workaround vscode 的 yaml 插件在格式化过长的数组时，会让每个元素占用一行
+                    def flatten(the_list: List[Any]):
+                        result = []
+                        for elem in the_list:
+                            if isinstance(elem, list):
+                                result.extend(flatten(elem))
+                            else:
+                                result.append(elem)
+                        return result
+                    exclude = flatten(exclude)
                 match_rule = DivisionRule.MatchUntil(
                     id=until["id"],
                     text_until=until.get("text-until", None),
