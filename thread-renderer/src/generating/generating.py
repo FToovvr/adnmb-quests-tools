@@ -68,17 +68,28 @@ class OutputsGenerator:
         )
 
     def generate(self):
-        self.global_state.topic_manager.new_topic(
+        topic = self.global_state.topic_manager.new_topic(
             name=self.root_title, is_file_level=True)
+        heading_output = topic.generate_heading(in_parent_file=False) + "\n"
 
+        children_output = ""
         with self.global_state.topic_manager.in_next_level():
             for (i, rule) in enumerate(self.root_division_rules):
                 if rule.divisionType != DivisionType.FILE:
                     raise f"division type of root division rules must be file. title: {rule.title}"
-                self.__generate(
+                children_output += self.__generate(
                     rule=rule,
                     is_last_part=(i == len(self.root_division_rules)-1),
                 )
+
+        # toc_output = generate_toc(topic.topics(), self.toc)
+
+        output = heading_output + "\n"
+        # output += toc_output + "\n"
+        output += children_output + "\n"
+
+        output_file_path = self.output_folder_path / "README.md"
+        output_file_path.write_text(output)
 
     def __generate(self,
                    rule: DivisionRule, is_last_part: bool,
