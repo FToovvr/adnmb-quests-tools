@@ -2,14 +2,19 @@
 
 ## make-book-from-dump
 
-### 一般重要
+### 下个commit前
+
+### 优先
 
 * [ ] 支持用`<details>`标签来容纳串
+* [ ] 各文件中的目录列表
+* [ ] `post-rules[].description`
+
+### 一般重要
+
 * [ ] 为`divisions.yaml`的使用方式编写说明文档
 * [ ] 补齐脚本的注释与文档
 * [ ] 支持生成纯markdown文件
-* [ ] 目录文件
-* [ ] 各文件中的目录列表
 
 ### 不重要
 
