@@ -61,6 +61,7 @@ class Topic:
             id += f"-{self.number-1}"
         return id
 
+<<<<<<< HEAD
     def __heading_name_and_level(self, in_parent_file: bool) -> Tuple(str, int):
         if self.is_file_level and not in_parent_file:
             path = self.__path(scope=Topic.Scope.GLOBAL)
@@ -103,6 +104,51 @@ class TopicPath(list):
             names.append(topic.name)
         return names
 
+||||||| parent of 414bb7b... 重构generating模块内部的topic相关机制
+=======
+    def __heading_name_and_level(self, in_parent_file: bool) -> Tuple(str, int):
+        if self.is_file_level and not in_parent_file:
+            path = self.__path(scope=Topic.Scope.GLOBAL)
+            name = "·".join(path.names())
+            return (name, self.nest_level+1)
+
+        parent_file_topic = self.__get_parent_file_topic()
+        nest_level = self.nest_level - parent_file_topic.nest_level + 1
+        return (self.name, nest_level+1)
+
+    def __get_parent_file_topic(self) -> Topic:
+        path = self.__path(scope=Topic.Scope.PARENT_FILE)
+        return path[0]
+
+    def title_name(self) -> str:
+        path = self.__path(scope=Topic.Scope.GLOBAL)
+        return "·".join(path.names()[1:])
+
+    def __path(self, scope) -> "TopicPath":
+        path = TopicPath()
+        current_level = None
+        for topic in reversed(self.manager.topics[0:self.index+1]):
+            if current_level == None or topic.nest_level < current_level:
+                current_level = topic.nest_level
+                path.insert(0, topic)
+            if topic.is_file_level and scope != Topic.Scope.GLOBAL:
+                if scope == Topic.Scope.FILE:
+                    break
+                elif topic != self:
+                    break
+        return path
+
+
+class TopicPath(list):
+    def names(self) -> List[str]:
+        names = []
+        for topic in self:
+            if topic == None:
+                names.append("（空）")
+            names.append(topic.name)
+        return names
+
+>>>>>>> 414bb7b... 重构generating模块内部的topic相关机制
 
 @dataclass
 class TopicManager:
