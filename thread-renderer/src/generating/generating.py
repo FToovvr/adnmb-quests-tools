@@ -22,6 +22,8 @@ class OutputsGenerator:
 
     output_folder_path: Path
 
+    intro: Optional[str]
+
     defaults: DivisionsConfiguration.Defaults
 
     toc: Union[None, DivisionsConfiguration.TOCUsingDetails]
@@ -53,6 +55,7 @@ class OutputsGenerator:
 
         self.post_pool = thread.flattened_post_dict()
         self.output_folder_path = output_folder_path
+        self.intro = cfg.intro
         self.defaults = cfg.defaults
         self.toc = cfg.toc
         self.po_cookies = cfg.po_cookies
@@ -72,6 +75,10 @@ class OutputsGenerator:
             name=self.root_title, is_file_level=True)
         heading_output = topic.generate_heading(in_parent_file=False) + "\n"
 
+        intro_output = ""
+        if self.intro != None:
+            intro_output = self.intro
+
         children_output = ""
         with self.global_state.topic_manager.in_next_level():
             for (i, rule) in enumerate(self.root_division_rules):
@@ -85,6 +92,8 @@ class OutputsGenerator:
         # toc_output = generate_toc(topic.topics(), self.toc)
 
         output = heading_output + "\n"
+        if intro_output != "":
+            output += intro_output + "\n"
         # output += toc_output + "\n"
         output += children_output + "\n"
 

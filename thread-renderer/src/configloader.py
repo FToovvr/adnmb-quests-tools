@@ -18,6 +18,8 @@ class DivisionsConfiguration:
     title: str
     po_cookies: List[str]
 
+    intro: Optional[str]
+
     defaults: "DivisionsConfiguration.Defaults"
     toc: Union[None, "DivisionsConfiguration.TOCUsingDetails"]
 
@@ -47,6 +49,7 @@ class DivisionsConfiguration:
         po = obj["po"]
         if not isinstance(po, list):
             po = [po]
+        intro = obj.get("intro", None)
         defaults = DivisionsConfiguration.Defaults.load_from_object(
             obj.get("defaults", None))
 
@@ -69,6 +72,7 @@ class DivisionsConfiguration:
 
             title=title,
             po_cookies=po,
+            intro=intro,
             defaults=defaults,
             toc=toc,
             division_rules=list(map(lambda d: DivisionRule.load_from_object(d),
