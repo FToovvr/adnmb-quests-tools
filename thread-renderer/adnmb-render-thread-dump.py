@@ -15,6 +15,7 @@ from os.path import splitext
 from shutil import rmtree
 import argparse
 import logging.config
+from hashlib import sha1
 
 # third-patry libiraies
 import yaml
@@ -26,29 +27,46 @@ from src.generating import OutputsGenerator
 
 
 def main(args: List[str]):
+    logging.debug(f"args: {args}")
     args = parse_args(prog=args[0], args=args[1:])
 
-    try:
-        with open(args.div_cfg_path) as div_cfg_file:
-            try:
-                div_cfg = DivisionsConfiguration.load(
-                    div_cfg_file,
-                    root_folder_path=Path(args.div_cfg_path).parent.absolute(),
-                )
-            except Exception as e:
-                exit_with_message(f"failed to load {args.div_cfg_path}: {e}",
-                                  status_code=3)
-    except Exception as e:
-        exit_with_message(f"unable to open {args.div_cfg_path}: {e}",
-                          status_code=2)
+    logging.info(f"配置文件路径：{args.div_cfg_path}")
+    logging.info(f"输入转存文件夹路径：{args.dump_folder_path}")
+    logging.info(f"输出文件夹路径：{args.output_folder_path}")
+
+    if (not args.overwrite_output) and args.output_folder_path.exists():
+        logging.critical("配置未允许覆写输出文件夹，呃输出文件夹已存在")
+        exit(1)
+
+    current_trace = Trace.evaluate(
+        div_cfg_path=args.div_cfg_path,
+        dump_folder_path=args.dump_folder_path,
+    )
+    if not needs_update(
+        current_trace=current_trace,
+        output_folder_path=args.output_folder_path,
+        ignores_trace=args.ignore_trace
+    ):
+        logging.info("未检测到发生变化，无需进行生成，退出")
+        return
+
+    div_cfg = load_divisions_configuration(args.div_cfg_path)
 
     thread = Thread.load_from_dump_folder(args.dump_folder_path)
+
+    if args.output_folder_path.exists():
+        logging.info(f"输出文件夹已存在。根据配置，将覆写该文件夹")
+        rmtree(args.output_folder_path, ignore_errors=True)
 
     args.output_folder_path.mkdir(parents=True)
     OutputsGenerator.generate_outputs(
         output_folder_path=args.output_folder_path,
         thread=thread,
         configuration=div_cfg)
+
+    if not args.no_generate_trace:
+        with open(args.output_folder_path / ".trace.json", 'w') as trace_file:
+            trace_file.write(json.dumps(current_trace.as_obj(), indent=2))
 
 
 def parse_args(prog: str, args: List[str]) -> argparse.Namespace:
@@ -71,6 +89,12 @@ def parse_args(prog: str, args: List[str]) -> argparse.Namespace:
     parser.add_argument("--log-config", "--logging-configuration",
                         help="python logging配置文件的路径", metavar="<path to python logging.conf>",
                         type=Path, dest="log_config")
+    parser.add_argument("--no-generate-trace",
+                        help="不记录往后用于检查是否需要更新的状态追踪文件",
+                        dest="no_generate_trace", action="store_true", default=False)
+    parser.add_argument("--ignore-trace",
+                        help="无视状态追踪文件，强制进行生成",
+                        dest="ignore_trace", action="store_true", default=False)
 
     args = parser.parse_args(args)
     default_base_folder_path = args.div_cfg_path.parent
@@ -78,11 +102,6 @@ def parse_args(prog: str, args: List[str]) -> argparse.Namespace:
         args.dump_folder_path = default_base_folder_path / "dump"
     if args.output_folder_path == None:
         args.output_folder_path = default_base_folder_path / "book"
-    if args.output_folder_path.exists():
-        if args.overwrite_output:
-            rmtree(args.output_folder_path, ignore_errors=True)
-        else:
-            raise f"output folder exists: {args.output_folder_path}"
     if args.log_config != None:
         logging.config.fileConfig(
             args.log_config, disable_existing_loggers=False)
@@ -90,9 +109,81 @@ def parse_args(prog: str, args: List[str]) -> argparse.Namespace:
     return args
 
 
-def exit_with_message(message: str, status_code: int):
-    print(message, file=sys.stderr)
-    sys.exit(status_code)
+def load_divisions_configuration(path: Path) -> DivisionsConfiguration:
+    with open(path) as div_cfg_file:
+        return DivisionsConfiguration.load(
+            div_cfg_file,
+            root_folder_path=Path(path).parent.absolute(),
+        )
+
+
+@dataclass
+class Trace:
+    reply_count: int
+    div_cfg_sha1: str
+
+    @staticmethod
+    def load_from_obj(obj: Dict[Any]):
+        return Trace(**obj)
+
+    def as_obj(self):
+        return self.__dict__
+
+    @staticmethod
+    def evaluate(
+        div_cfg_path: Path,
+        dump_folder_path: Path,
+    ) -> Trace:
+        with open(dump_folder_path / ".trace.json") as dump_trace_file:
+            dump_trace = DumpTrace.load_from_obj(json.load(dump_trace_file))
+        with open(div_cfg_path, 'rb') as div_cfg_file:
+            h = sha1()
+            while True:
+                chunk = div_cfg_file.read(h.block_size)
+                if not chunk:
+                    break
+                h.update(chunk)
+            div_cfg_sha1 = h.hexdigest()
+        return Trace(
+            reply_count=dump_trace.reply_count,
+            div_cfg_sha1=div_cfg_sha1,
+        )
+
+
+@dataclass
+class DumpTrace:
+    reply_count: int
+
+    @staticmethod
+    def load_from_obj(obj: Dict[Any]) -> DumpTrace:
+        return DumpTrace(**obj)
+
+    def as_obj(self):
+        return self.__dict__
+
+
+def needs_update(
+    current_trace: Trace,
+    output_folder_path: Path,
+    ignores_trace: bool
+):
+    trace_file_path = output_folder_path / ".trace.json"
+    if not trace_file_path.exists():
+        return True
+    elif ignores_trace:
+        logging.info(f"根据配置，忽略状态追踪文件")
+        return True
+
+    with open(trace_file_path) as trace_file:
+        trace = Trace.load_from_obj(json.load(trace_file))
+
+    if trace.reply_count != current_trace.reply_count:
+        return True
+
+    if trace.div_cfg_sha1 != current_trace.div_cfg_sha1:
+        return True
+
+    return False
 
 
 if __name__ == "__main__":
