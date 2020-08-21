@@ -99,13 +99,23 @@ class PostRender:
                 unappened_content += content_before
                 continue
 
-            should_expand = options.expand_quote_links == True or (
-                quote_link_id in options.expand_quote_links)
-            should_expand = should_expand and quote_link_id not in self.expanded_post_ids
-
-            if not should_expand:
+            if quote_link_id in self.expanded_post_ids:
+                # 之前已经出现过，因此不会展开
+                # 为了减少冗余，无论配置如何都不会展开
+                # TODO: 点击跳转到包含展开内容的地方
+                unappened_content += f'{content_before}<font color="#789922">&gt;&gt;No.{quote_link_id}</font>'
+            elif quote_link_id not in self.post_pool:
+                # 该引用链接位于串外，无力展开
+                # TODO: 是不是可以给个链接？
+                unappened_content += f'{content_before}<font color="#789922">&gt;&gt;No.{quote_link_id}（串外）</font>'
+            elif options.expand_quote_links == False or (
+                    isinstance(options.expand_quote_links, list) and
+                    quote_link_id not in options.expand_quote_links):
+                # 配置中要求不要展开
+                # 也许可以考虑在类型是 details-blockquote 时包含内容，但默认折叠？
                 unappened_content += f'{content_before}<font color="#789922">&gt;&gt;No.{quote_link_id}</font>'
             else:
+                # 允许展开
                 self.expanded_post_ids.add(quote_link_id)
 
                 line = unappened_content + content_before
@@ -113,16 +123,12 @@ class PostRender:
                 if line.strip() != "":
                     lines.append(f"<span>{line}</span>  ")
 
-                if quote_link_id != None:
-                    if quote_link_id not in self.post_pool:
-                        lines.append(f"> {quote_link_id} 【串外引用】")
-                    else:
-                        lines.extend(self.__render_lines(
-                            self.post_pool[quote_link_id],
-                            options=options.clone_and_replace_with(
-                                after_text=None, until_text=None,
-                            ),
-                        ))
+                lines.extend(self.__render_lines(
+                    self.post_pool[quote_link_id],
+                    options=options.clone_and_replace_with(
+                        after_text=None, until_text=None,
+                    ),
+                ))
         if unappened_content.strip() != "":
             lines.append(f"<span>{unappened_content}</span>  ")
         lines.append("")
