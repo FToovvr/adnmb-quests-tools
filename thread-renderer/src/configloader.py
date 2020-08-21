@@ -172,7 +172,7 @@ class DivisionRule:
             match_rule=match_rule,
             post_rules=post_rules,
             children=list(map(lambda c: DivisionRule.load_from_object(c),
-                              children))
+                              children or []))
         )
 
 
