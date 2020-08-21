@@ -112,14 +112,26 @@ class OutputsGenerator:
                 match_until_id=rule.match_rule.id,
             )
 
-        output = ""
+        heading_output = topic.generate_heading(
+            in_parent_file=rule.divisionType != DivisionType.FILE,
+        ) + "\n"
+        intro_output = ""
+        if rule.intro != None:
+            intro_output = rule.intro
 
-        if rule.divisionType != DivisionType.FILE:
-            # FILE 输出标题延后
-            output += topic.generate_heading(in_parent_file=True) + "\n\n"
-            # FILE 输出 intro 延后
-            if rule.intro != None:
-                output += f"{rule.intro}\n\n"
+        self_output = ""
+        if isinstance(rule.match_rule, DivisionRule.MatchOnly):
+            self_output = self.__generate_only(
+                only_ids=rule.match_rule.ids,
+                post_rules=rule.post_rules,
+                in_file_state=in_file_state,
+            )
+        elif isinstance(rule.match_rule, DivisionRule.MatchUntil):
+            self_output = self.__generate_until(
+                until=rule.match_rule,
+                post_rules=rule.post_rules,
+                in_file_state=in_file_state,
+            )
 
         with self.global_state.topic_manager.in_next_level():
             children_output = self.__generate_children(
@@ -128,51 +140,34 @@ class OutputsGenerator:
                 in_file_state=in_file_state,
             )
 
-        self_output = ""
-        is_leftover = rule.match_rule == None and is_last_part and nest_level == 1
-        if isinstance(rule.match_rule, DivisionRule.MatchOnly):
-            self_output += self.__generate_only(
-                only_ids=rule.match_rule.ids,
+        should_contain_leftover = rule.match_rule == None and is_last_part and nest_level == 1
+        if should_contain_leftover:
+            leftover_output = self.__generate_leftover(
                 post_rules=rule.post_rules,
-                in_file_state=in_file_state,
-            )
-        elif isinstance(rule.match_rule, DivisionRule.MatchUntil) or is_leftover:
-            self_output += self.__generate_until(
-                until=rule.match_rule,
-                post_rules=rule.post_rules,
-                is_leftover=is_leftover,
                 in_file_state=in_file_state,
             )
 
-        if is_leftover:
-            output += children_output + "\n"
-            if self_output != "":
-                with self.global_state.topic_manager.in_next_level():
-                    leftover_topic = self.global_state.topic_manager.new_topic(
-                        "尚未整理", is_file_level=False)
-                    output += leftover_topic.generate_heading(
-                        in_parent_file=True) + "\n\n"
-                    output += self_output + "\n"
-        else:
+        output = ""
+        output += heading_output + "\n"
+        if intro_output != "":
+            output += intro_output + "\n"
+        if self.toc != None and rule.divisionType == DivisionType.FILE:
+            toc_output = generate_toc(topics=topic.topics(), toc_cfg=self.toc)
+            output += toc_output + "\n"
+        if self_output != "":
             output += self_output + "\n"
-            output += children_output + "\n"
+        output += children_output + "\n"
+        if should_contain_leftover:
+            output += leftover_output + "\n"
 
         if rule.divisionType == DivisionType.FILE:
-            _output = output
-            output = topic.generate_heading(in_parent_file=False) + "\n\n"
-            if rule.intro != None:
-                output += f"{rule.intro}\n\n"
-            if self.toc != None:
-                toc = generate_toc(topics=topic.topics(), toc_cfg=self.toc)
-                output += toc + "\n"
-            output += _output + "\n"
             file_title = topic.title_name()
             output_file_path = self.output_folder_path / (file_title + ".md")
             output_file_path.write_text(output)
 
             parent_content = topic.generate_heading(
                 in_parent_file=True) + "\n\n"
-            parent_content += f"见[{file_title}]({file_title}.md)\n"
+            parent_content += f"⎆ [{file_title}]({file_title}.md)\n"
             return parent_content
         elif rule.divisionType == DivisionType.SECTION:
             return output
@@ -233,15 +228,15 @@ class OutputsGenerator:
         return output
 
     def __generate_until(self,
-                         until: DivisionRule.MatchUntil,
+                         until: Optional[DivisionRule.MatchUntil],
                          post_rules: Optional[Dict[int, DivisionRule.PostRule]],
-                         is_leftover: bool, in_file_state: "OutputsGenerator.InFileState"):
+                         in_file_state: "OutputsGenerator.InFileState") -> str:
         output = ""
         while len(self.global_state.unprocessed_post_ids.keys()) != 0:
             id = list(self.global_state.unprocessed_post_ids.keys())[0]
 
             until_text = None
-            if not is_leftover:
+            if until != None:
                 if id > until.id:
                     break
                 elif id == until.id:
@@ -268,3 +263,22 @@ class OutputsGenerator:
             else:
                 self.global_state.unprocessed_post_ids.pop(id)
         return output
+
+    def __generate_leftover(self,
+                            post_rules: Optional[Dict[int, DivisionRule.PostRule]],
+                            in_file_state: "OutputsGenerator.InFileState") -> str:
+        leftover_output = self.__generate_until(
+            until=None,
+            post_rules=post_rules,
+            in_file_state=in_file_state,
+        )
+        if leftover_output == "":
+            return ""
+
+        with self.global_state.topic_manager.in_next_level():
+            leftover_topic = self.global_state.topic_manager.new_topic(
+                "尚未整理", is_file_level=False)
+            output = leftover_topic.generate_heading(
+                in_parent_file=True) + "\n\n"
+            output += leftover_output + "\n"
+            return output
