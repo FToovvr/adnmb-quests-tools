@@ -139,6 +139,13 @@ class OutputsGenerator:
         if rule.intro != None:
             intro_output = rule.intro
 
+        with self.global_state.topic_manager.in_next_level():
+            children_output = self.__generate_children(
+                rule.children,
+                is_last_part=is_last_part,
+                in_file_state=in_file_state,
+            )
+
         self_output = ""
         if isinstance(rule.match_rule, DivisionRule.MatchOnly):
             self_output = self.__generate_only(
@@ -153,14 +160,6 @@ class OutputsGenerator:
                 in_file_state=in_file_state,
             )
 
-        with self.global_state.topic_manager.in_next_level():
-            children_output = self.__generate_children(
-                rule.children,
-                is_last_part=is_last_part,
-                in_file_state=in_file_state,
-            )
-
-        should_contain_leftover = rule.match_rule == None and is_last_part and nest_level == 1
         if should_contain_leftover:
             leftover_output = self.__generate_leftover(
                 post_rules=rule.post_rules,
