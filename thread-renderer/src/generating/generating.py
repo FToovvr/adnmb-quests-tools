@@ -36,13 +36,12 @@ class OutputsGenerator:
     class GlobalState:
         unprocessed_post_ids: OrderedDict[int, None]
         after_text: str = None
+        topic_manager: TopicManager = field(default_factory=TopicManager)
 
     @dataclass
     class InFileState:
         expanded_post_ids: Set[int]  # = field(default_factory=set)
         post_render: PostRender
-
-        title_manager: TopicManager = field(default_factory=TopicManager)
 
     @staticmethod
     def generate_outputs(output_folder_path: Path, thread: Thread, configuration: DivisionsConfiguration):
@@ -69,33 +68,31 @@ class OutputsGenerator:
         )
 
     def generate(self):
-        for (i, rule) in enumerate(self.root_division_rules):
-            if rule.divisionType != DivisionType.FILE:
-                raise f"division type of root division rules must be file. title: {rule.title}"
-            self.__generate(
-                parent_titles=[self.root_title],
-                parent_nest_level=0,
-                rule=rule,
-                is_last_part=(i == len(self.root_division_rules)-1),
-            )
+        self.global_state.topic_manager.new_topic(
+            name=self.root_title, is_file_level=True)
+
+        with self.global_state.topic_manager.in_next_level():
+            for (i, rule) in enumerate(self.root_division_rules):
+                if rule.divisionType != DivisionType.FILE:
+                    raise f"division type of root division rules must be file. title: {rule.title}"
+                self.__generate(
+                    rule=rule,
+                    is_last_part=(i == len(self.root_division_rules)-1),
+                )
 
     def __generate(self,
-                   parent_titles: List[str], parent_nest_level: int,
                    rule: DivisionRule, is_last_part: bool,
                    in_file_state: Optional["OutputsGenerator.InFileState"] = None
                    ) -> Optional[str]:
 
-        titles = list(parent_titles)
-        titles.append(rule.title)
+        topic = self.global_state.topic_manager.new_topic(
+            name=rule.title,
+            is_file_level=rule.divisionType == DivisionType.FILE,
+        )
+        logging.debug(
+            f"{topic.name}, {topic.nest_level}, {topic.is_file_level}")
 
         if rule.divisionType == DivisionType.FILE:
-            file_title = "·".join(titles[1:])
-            if in_file_state != None:
-                title_in_parent = in_file_state.title_manager.new_topic(
-                    rule.title, parent_nest_level+1, external_name=file_title)
-            else:
-                title_in_parent = None
-
             nest_level = 1
             expanded_post_ids = set()
             in_file_state = OutputsGenerator.InFileState(
@@ -108,8 +105,6 @@ class OutputsGenerator:
             )
         elif in_file_state == None:
             raise "what? in __generate"
-        else:
-            nest_level = parent_nest_level+1
 
         if isinstance(rule.match_rule, DivisionRule.MatchUntil) and rule.match_rule.exclude != None:
             self.__remove_excluded_posts_fron_unprocessed_posts(
@@ -119,27 +114,19 @@ class OutputsGenerator:
 
         output = ""
 
-        if rule.divisionType == DivisionType.FILE:
-            shown_title = "·".join(titles)
-        else:
-            shown_title = rule.title
-        title = in_file_state.title_manager.new_topic(shown_title, nest_level)
-        logging.debug(f'{"#" * nest_level} {title.name}')
-
         if rule.divisionType != DivisionType.FILE:
             # FILE 输出标题延后
-            output += title.generate_heading() + "\n\n"
+            output += topic.generate_heading(in_parent_file=True) + "\n\n"
             # FILE 输出 intro 延后
             if rule.intro != None:
                 output += f"{rule.intro}\n\n"
 
-        children_output = self.__generate_children(
-            rule.children,
-            is_last_part=is_last_part,
-            titles=titles,
-            nest_level=nest_level,
-            in_file_state=in_file_state,
-        )
+        with self.global_state.topic_manager.in_next_level():
+            children_output = self.__generate_children(
+                rule.children,
+                is_last_part=is_last_part,
+                in_file_state=in_file_state,
+            )
 
         self_output = ""
         is_leftover = rule.match_rule == None and is_last_part and nest_level == 1
@@ -160,32 +147,33 @@ class OutputsGenerator:
         if is_leftover:
             output += children_output + "\n"
             if self_output != "":
-                leftover_title = in_file_state.title_manager.new_topic(
-                    "尚未整理", nest_level+1)
-                output += leftover_title.generate_heading() + "\n\n"
-                output += self_output + "\n"
+                with self.global_state.topic_manager.in_next_level():
+                    leftover_topic = self.global_state.topic_manager.new_topic(
+                        "尚未整理", is_file_level=False)
+                    output += leftover_topic.generate_heading(
+                        in_parent_file=True) + "\n\n"
+                    output += self_output + "\n"
         else:
             output += self_output + "\n"
             output += children_output + "\n"
 
         if rule.divisionType == DivisionType.FILE:
             _output = output
-            output = title.generate_heading() + "\n\n"
+            output = topic.generate_heading(in_parent_file=False) + "\n\n"
             if rule.intro != None:
                 output += f"{rule.intro}\n\n"
             if self.toc != None:
-                toc = generate_toc(
-                    in_file_state.title_manager.topics, toc_cfg=self.toc)
+                toc = generate_toc(topics=topic.topics(), toc_cfg=self.toc)
                 output += toc + "\n"
             output += _output + "\n"
+            file_title = topic.title_name()
             output_file_path = self.output_folder_path / (file_title + ".md")
             output_file_path.write_text(output)
 
-            if title_in_parent != None:
-                parent_content = title_in_parent.generate_heading() + "\n\n"
-                parent_content += f"见[{file_title}]({file_title}.md)\n"
-                return parent_content
-            return None
+            parent_content = topic.generate_heading(
+                in_parent_file=True) + "\n\n"
+            parent_content += f"见[{file_title}]({file_title}.md)\n"
+            return parent_content
         elif rule.divisionType == DivisionType.SECTION:
             return output
         else:
@@ -204,15 +192,13 @@ class OutputsGenerator:
 
     def __generate_children(self,
                             rules: [DivisionRule],
-                            is_last_part: bool, titles: str, nest_level: int,
+                            is_last_part: bool,
                             in_file_state: "OutputsGenerator.InFileState"):
         children_output = ""
         for (i, child_rule) in enumerate(rules):
             child_is_last_part = is_last_part and (
                 i == len(rules)-1)
             _child_output = self.__generate(
-                parent_titles=titles,
-                parent_nest_level=nest_level,
                 rule=child_rule,
                 is_last_part=child_is_last_part,
                 in_file_state=in_file_state,

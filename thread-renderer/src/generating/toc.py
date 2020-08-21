@@ -7,17 +7,21 @@ from .topic import Topic
 
 def generate_toc(
         topics: List[Topic],
-        toc_cfg: Union[None, DivisionsConfiguration.TOCUsingDetails]
+        toc_cfg: Union[None, DivisionsConfiguration.TOCUsingDetails],
+        uses_relative_levels: bool = True
 ) -> str:
     if isinstance(toc_cfg, DivisionsConfiguration.TOCUsingDetails):
-        return generate_toc_using_details(topics, toc_cfg=toc_cfg)
+        return generate_toc_using_details(
+            topics, toc_cfg=toc_cfg,
+            uses_relative_levels=uses_relative_levels,
+        )
     raise f"unimplemented toc configuration: {toc_cfg}"
 
 
 def generate_toc_using_details(
         topics: List[Topic],
         toc_cfg: DivisionsConfiguration.TOCUsingDetails,
-        uses_relative_levels: bool = False
+        uses_relative_levels: bool = True
 ) -> str:
 
     toc = ""
@@ -30,7 +34,7 @@ def generate_toc_using_details(
         if root_level == None:
             root_level = topic.nest_level
         current_level = topic.nest_level - root_level
-        next_level = root_level-1
+        next_level = 0
         if i+1 < len(topics):
             next_level = topics[i+1].nest_level - root_level
 
@@ -39,7 +43,9 @@ def generate_toc_using_details(
             first = True
             while next_level > current_level:
                 if first:
-                    summary = topic.generate_link_for_toc()
+                    summary = topic.generate_link_for_toc(
+                        in_parent_file=i != 0,
+                    )
                     first = False
                 else:
                     summary = '<span style="color: red; font-style: italic">缺失</span>'
@@ -64,7 +70,7 @@ def generate_toc_using_details(
             li = f'<li'
             if toc_cfg.use_margin:
                 li += f' style="{DETAILS_STYLE}"'
-            li += f'>{topic.generate_link_for_toc()}</li>'
+            li += f'>{topic.generate_link_for_toc(in_parent_file=(i!=0))}</li>'
             toc += li
             if toc_cfg.use_blockquote:
                 toc += "\n"
