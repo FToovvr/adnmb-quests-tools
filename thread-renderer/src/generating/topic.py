@@ -44,8 +44,9 @@ class Topic:
             # return f'⎆ <a href="{self.title_name()}.md">{name}</a>'
             return f'⎆ [{name}]({self.title_name()})'
         else:
-            # return f'<a href="#{self.__heading_id()}">{name}</a>'
-            return f'[{name}](#{self.__heading_id()})'
+            # vscode markdown 预览如果使用 markdown 语法则无法跳转
+            return f'<a href="#{self.__heading_id()}">{name}</a>'
+            # return f'[{name}](#{self.__heading_id()})'
 
     def generate_heading(self, in_parent_file: bool = True) -> str:
         (name, level) = self.__heading_name_and_level(
