@@ -69,23 +69,27 @@ class PostRender:
 
         if options.after_text != None:
             lines.extend(
-                ['<span style="color: gray; font-size: smaller">（…）</span><br />', ""])
+                ['<p style="color: gray; font-size: smaller">（…）</p>', ""])
+
+        lines.append("<p>")
 
         for line in content.split("<br />\n"):
             if line.strip() == "":
-                lines.append("")
+                lines.append("</p><p>")
             else:
                 if options.expand_quote_links == False:
                     # <span> 标签用于防止文本被被当做markdown解析
                     # 两个空格是markdown换行
-                    lines.append(f"<span>{line}</span><br />")
+                    lines.append(line+"<br />")
                     continue
 
                 lines.extend(self.__render_content_line(line, options))
 
+        lines.append("</p>")
+
         if options.until_text != None:
             lines.extend(
-                ["", '<span style="color: gray; font-size: smaller">（…）</span><br />'])
+                ["", '<p style="color: gray; font-size: smaller">（…）</p>'])
 
         if options.style == DivisionsConfiguration.Defaults.PostStyle.DETAILS_BLOCKQUOTE:
             lines.append('</details>')
@@ -135,16 +139,18 @@ class PostRender:
                 line = unappened_content + content_before
                 unappened_content = ""
                 if line.strip() != "":
-                    lines.append(f"<span>{line}</span><br />")
+                    lines.append(line+"<br />")
 
+                lines.append("<p>")
                 lines.extend(self.__render_lines(
                     self.post_pool[quote_link_id],
                     options=options.clone_and_replace_with(
                         after_text=None, until_text=None,
                     ),
                 ))
+                lines.append("</p>")
         if unappened_content.strip() != "":
-            lines.append(f"<span>{unappened_content}</span><br />")
+            lines.append(unappened_content+"<br />")
 
         return lines
 
