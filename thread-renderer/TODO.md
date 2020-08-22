@@ -10,6 +10,7 @@
 * [ ] 各文件中的目录列表
 * [ ] `post-rules[].description`
 * [ ] 允许对带有图片的被切割的串指定图片所处的部分
+* [ ] `expand-quote-links: true | false`改为`quote-link-rules: open | close | plain | { … }`
 
 ### 一般重要
 
