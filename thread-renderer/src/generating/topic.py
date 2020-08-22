@@ -63,7 +63,7 @@ class Topic:
 
     def __heading_name_and_level(self, in_parent_file: bool) -> Tuple(str, int):
         if self.is_file_level and not in_parent_file:
-            path = self.__path(scope=Topic.Scope.GLOBAL)
+            path = self.path(scope=Topic.Scope.GLOBAL)
             name = "·".join(path.names())
             return (name, 1)
 
@@ -80,14 +80,16 @@ class Topic:
         return self.nest_level - parent_file_topic.nest_level
 
     def __get_parent_file_topic(self) -> Topic:
-        path = self.__path(scope=Topic.Scope.PARENT_FILE)
+        path = self.path(scope=Topic.Scope.PARENT_FILE)
         return path[0]
 
     def title_name(self) -> str:
-        path = self.__path(scope=Topic.Scope.GLOBAL)
+        if self.nest_level == 0:
+            return "README"
+        path = self.path(scope=Topic.Scope.GLOBAL)
         return "·".join(path.names()[1:])
 
-    def __path(self, scope) -> "TopicPath":
+    def path(self, scope) -> "TopicPath":
         path = TopicPath()
         current_level = None
         for topic in reversed(self.manager.topics[0:self.index+1]):

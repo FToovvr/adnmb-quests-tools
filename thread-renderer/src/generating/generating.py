@@ -13,6 +13,7 @@ from .postrender import PostRender
 
 from .topic import Topic, TopicManager
 from .toc import generate_toc
+from .navigation import generate_navigation
 
 
 @dataclass
@@ -167,6 +168,8 @@ class OutputsGenerator:
             )
 
         output = ""
+        if rule.divisionType == DivisionType.FILE:
+            output += generate_navigation(topic) + "\n"
         output += heading_output + "\n"
         if intro_output != "":
             output += intro_output + "\n"
