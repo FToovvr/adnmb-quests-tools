@@ -50,8 +50,6 @@ def generate_toc_using_details(
                 else:
                     summary = '<span style="color: red; font-style: italic">缺失</span>'
 
-                if toc_cfg.use_blockquote:
-                    toc += "> " * current_level
                 details = f'<details'
                 if current_level+1 <= 2:  # TODO: 允许自定义深度
                     details += ' open'
@@ -60,30 +58,18 @@ def generate_toc_using_details(
                 details += f'><summary>{summary}</summary>'
                 toc += details
                 if toc_cfg.use_blockquote:
-                    toc += "\n"
-                    toc += "> " * current_level
-                    toc += "\n"
+                    toc += "<blockquote>"
                 current_level += 1
         else:
-            if toc_cfg.use_blockquote:
-                toc += "> " * current_level
             li = f'<li'
             if toc_cfg.use_margin:
                 li += f' style="{DETAILS_STYLE}"'
             li += f'>{topic.generate_link_for_toc(in_parent_file=(i!=0))}</li>'
             toc += li
-            if toc_cfg.use_blockquote:
-                toc += "\n"
-                toc += "> " * current_level
-                toc += "\n"
             while next_level < current_level:
                 current_level -= 1
                 if toc_cfg.use_blockquote:
-                    toc += "> " * current_level
+                    toc += '</blockquote>'
                 toc += '</details>'
-                if toc_cfg.use_blockquote:
-                    toc += "\n"
-                    toc += "> " * current_level
-                    toc += "\n"
 
     return toc + "\n"

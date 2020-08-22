@@ -36,6 +36,8 @@ class PostRender:
 
         self.expanded_post_ids.add(post.id)
 
+        lines.extend(['<blockquote>', ""])
+
         # 生成头部
         header_line = self.__render_header_line(
             post,
@@ -43,7 +45,8 @@ class PostRender:
             is_po=post.user_id in self.po_cookies
         )
         if options.style == DivisionsConfiguration.Defaults.PostStyle.DETAILS_BLOCKQUOTE:
-            first_line = f'<details open><summary>{header_line}</summary><hr/>'
+            lines.extend(
+                [f'<details open><summary>{header_line}</summary><hr/>', ""])
         else:
             lines.extend([header_line, ""])
 
@@ -66,7 +69,7 @@ class PostRender:
 
         if options.after_text != None:
             lines.extend(
-                ['<span style="color: gray; font-size: smaller">（…）</span>  ', ""])
+                ['<span style="color: gray; font-size: smaller">（…）</span><br />', ""])
 
         for line in content.split("<br />\n"):
             if line.strip() == "":
@@ -75,26 +78,21 @@ class PostRender:
                 if options.expand_quote_links == False:
                     # <span> 标签用于防止文本被被当做markdown解析
                     # 两个空格是markdown换行
-                    lines.append(f"<span>{line}</span>  ")
+                    lines.append(f"<span>{line}</span><br />")
                     continue
 
                 lines.extend(self.__render_content_line(line, options))
 
         if options.until_text != None:
             lines.extend(
-                ["", '<span style="color: gray; font-size: smaller">（…）</span>  '])
+                ["", '<span style="color: gray; font-size: smaller">（…）</span><br />'])
 
         if options.style == DivisionsConfiguration.Defaults.PostStyle.DETAILS_BLOCKQUOTE:
-            last_line = '</details>'
-            # lines = list(map(lambda line: f"> {line}", lines))
-            lines.insert(0, first_line)
-            lines.insert(1, "")
-            lines.append(last_line)
+            lines.append('</details>')
             lines.append('<hr style="visibility: hidden"/>')
-            # return lines
-            return list(map(lambda line: "> " + line, lines))
-        else:
-            return list(map(lambda line: "> " + line, lines))
+
+        lines.append('</blockquote>')
+        return lines
 
     def __render_header_line(self, post: Post, is_part: bool, is_po: bool) -> str:
         header_items = [f"No.{post.id}"]
@@ -137,7 +135,7 @@ class PostRender:
                 line = unappened_content + content_before
                 unappened_content = ""
                 if line.strip() != "":
-                    lines.append(f"<span>{line}</span>  ")
+                    lines.append(f"<span>{line}</span><br />")
 
                 lines.extend(self.__render_lines(
                     self.post_pool[quote_link_id],
@@ -146,7 +144,7 @@ class PostRender:
                     ),
                 ))
         if unappened_content.strip() != "":
-            lines.append(f"<span>{unappened_content}</span>  ")
+            lines.append(f"<span>{unappened_content}</span><br />")
 
         return lines
 
