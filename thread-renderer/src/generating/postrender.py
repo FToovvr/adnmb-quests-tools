@@ -28,9 +28,9 @@ class PostRender:
             return PostRender.Options(**d)
 
     def render(self, post, options: "PostRender.Options") -> str:
-        return "\n".join(self.__render_lines(post, options)) + "\n"
+        return "\n".join(self.__render_lines(post, options, nest_level=0)) + "\n"
 
-    def __render_lines(self, post, options: "PostRender.Options") -> str:
+    def __render_lines(self, post, options: "PostRender.Options", nest_level: int) -> str:
 
         lines = []
 
@@ -45,8 +45,12 @@ class PostRender:
             is_po=post.user_id in self.po_cookies
         )
         if options.style == DivisionsConfiguration.Defaults.PostStyle.DETAILS_BLOCKQUOTE:
+            details_open_tag = "<details"
+            if nest_level != 1:
+                details_open_tag += " open"
+            details_open_tag += ">"
             lines.extend(
-                [f'<details open><summary>{header_line}</summary><hr/>', ""])
+                [f'{details_open_tag}<summary>{header_line}</summary><hr/>', ""])
         else:
             lines.extend([header_line, ""])
 
@@ -83,7 +87,8 @@ class PostRender:
                     lines.append(line+"<br />")
                     continue
 
-                lines.extend(self.__render_content_line(line, options))
+                lines.extend(self.__render_content_line(
+                    line, options, nest_level=nest_level))
 
         lines.append("</p>")
 
@@ -109,7 +114,7 @@ class PostRender:
             header_items.extend([" ", f"ID:{post.user_id}"])
         return "".join(header_items)
 
-    def __render_content_line(self, line: str, options: "PostRender.Options") -> List[str]:
+    def __render_content_line(self, line: str, options: "PostRender.Options", nest_level: int) -> List[str]:
         lines = []
         unappened_content = ""
         for (content_before, quote_link_id) in PostRender.split_line_by_quote_link(line):
@@ -147,6 +152,7 @@ class PostRender:
                     options=options.clone_and_replace_with(
                         after_text=None, until_text=None,
                     ),
+                    nest_level=nest_level+1,
                 ))
                 lines.append("</p>")
         if unappened_content.strip() != "":
