@@ -51,7 +51,7 @@ def generate_toc_using_details(
                     summary = '<span style="color: red; font-style: italic">缺失</span>'
 
                 details = f'<details'
-                if current_level+1 <= 2:  # TODO: 允许自定义深度
+                if current_level+1 not in toc_cfg.collapse_at_levels:
                     details += ' open'
                 if toc_cfg.use_margin:
                     details += f' style="{DETAILS_STYLE}; background-color: #80808020"'

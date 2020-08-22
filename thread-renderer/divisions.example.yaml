@@ -13,7 +13,10 @@ intro: |
 
 defaults:
   expand-quote-links: false
-toc: details-blockquote # false (or 'null') | 'details-margin' (or 'details', 'true') | 'details-blockquote' | 'list'
+toc:
+  style: details-blockquote # false (or 'null') | 'details-margin' (or 'details', 'true') | 'details-blockquote'
+  collapse:
+    at-levels: 3
 
 divisions:
   - title: 原文

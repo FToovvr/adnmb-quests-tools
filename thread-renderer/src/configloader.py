@@ -3,7 +3,7 @@
 from __future__ import annotations
 from typing import List, IO, Optional, Union, Dict, Any
 from enum import Enum, auto
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from pathlib import Path
 
@@ -55,6 +55,7 @@ class DivisionsConfiguration:
     class TOCUsingDetails:
         use_margin: bool = False
         use_blockquote: bool = False
+        collapse_at_levels: List[int] = field(default_factory=list)
 
     @staticmethod
     def load(file: IO, root_folder_path: str) -> DivisionsConfiguration:
@@ -68,17 +69,36 @@ class DivisionsConfiguration:
         defaults = DivisionsConfiguration.Defaults.load_from_object(
             obj.get("defaults", None))
 
-        toc = obj.get("toc", None)
+        toc = obj.get("toc", "details-margin")
         if toc == False or toc == None:
             toc = None
         else:
-            if toc == True or toc == "details" or toc == "details-margin":
-                toc = DivisionsConfiguration.TOCUsingDetails(use_margin=True)
-            elif toc == "details-blockquote":
-                toc = DivisionsConfiguration.TOCUsingDetails(
-                    use_blockquote=True)
+            toc_collapse_at_levels = [3]
+            if isinstance(toc, str):
+                toc_style = toc
+            elif toc == True:
+                toc_style = "details-blockquote"
+            else:
+                toc_style = toc.get("style", "details-blockquote")
+                toc_collapse = toc.get("collapse", {})
+                toc_collapse_at_levels = toc_collapse.get(
+                    "at-levels", None) or []
+                if type(toc_collapse_at_levels) is int:
+                    toc_collapse_at_levels = [toc_collapse_at_levels]
+
+            use_blockquote, use_margin = False, False
+            if toc_style in ["details", "details-blockquote"]:
+                use_blockquote = True
+            elif toc_style == "details-margin":
+                use_margin = True
             else:
                 raise f"unknown toc type: {toc}"
+
+            toc = DivisionsConfiguration.TOCUsingDetails(
+                use_blockquote=use_blockquote,
+                use_margin=use_margin,
+                collapse_at_levels=toc_collapse_at_levels,
+            )
 
         division_rules = obj.get("divisions", list())
 
