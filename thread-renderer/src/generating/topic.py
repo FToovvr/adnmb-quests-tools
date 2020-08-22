@@ -22,7 +22,7 @@ class Topic:
 
     class Scope(Enum):
         GLOBAL = auto()
-        FILE = auto()
+        # FILE = auto()
         PARENT_FILE = auto()
 
     def topics(self) -> List[Topic]:
@@ -67,9 +67,17 @@ class Topic:
             name = "·".join(path.names())
             return (name, 1)
 
-        parent_file_topic = self.__get_parent_file_topic()
-        nest_level = self.nest_level - parent_file_topic.nest_level
+        nest_level = self.__nest_level_in_parent_file()
         return (self.name, nest_level+1)
+
+    def nest_level_in_current_file(self) -> int:
+        if self.is_file_level:
+            return 0
+        return self.__nest_level_in_parent_file()
+
+    def __nest_level_in_parent_file(self) -> int:
+        parent_file_topic = self.__get_parent_file_topic()
+        return self.nest_level - parent_file_topic.nest_level
 
     def __get_parent_file_topic(self) -> Topic:
         path = self.__path(scope=Topic.Scope.PARENT_FILE)
@@ -87,7 +95,7 @@ class Topic:
                 current_level = topic.nest_level
                 path.insert(0, topic)
             if topic.is_file_level and scope != Topic.Scope.GLOBAL:
-                if scope == Topic.Scope.FILE:
+                if False:  # scope == Topic.Scope.FILE:
                     break
                 elif topic != self:
                     break

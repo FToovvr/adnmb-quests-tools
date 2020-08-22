@@ -113,7 +113,6 @@ class OutputsGenerator:
             f"{topic.name}, {topic.nest_level}, {topic.is_file_level}")
 
         if rule.divisionType == DivisionType.FILE:
-            nest_level = 1
             expanded_post_ids = set()
             in_file_state = OutputsGenerator.InFileState(
                 expanded_post_ids=expanded_post_ids,
@@ -160,6 +159,7 @@ class OutputsGenerator:
                 in_file_state=in_file_state,
             )
 
+        should_contain_leftover = rule.match_rule == None and is_last_part and topic.nest_level_in_current_file() == 0
         if should_contain_leftover:
             leftover_output = self.__generate_leftover(
                 post_rules=rule.post_rules,
