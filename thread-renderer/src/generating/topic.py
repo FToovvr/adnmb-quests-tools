@@ -41,9 +41,11 @@ class Topic:
     def generate_link_for_toc(self, in_parent_file: bool) -> str:
         (name, _) = self.__heading_name_and_level(in_parent_file=in_parent_file)
         if self.is_file_level and in_parent_file:
-            return f'⎆ <a href="{self.title_name()}.md">{name}</a>'
+            # return f'⎆ <a href="{self.title_name()}.md">{name}</a>'
+            return f'⎆ [{name}]({self.title_name()})'
         else:
-            return f'<a href="#{self.__heading_id()}">{name}</a>'
+            # return f'<a href="#{self.__heading_id()}">{name}</a>'
+            return f'[{name}](#{self.__heading_id()})'
 
     def generate_heading(self, in_parent_file: bool = True) -> str:
         (name, level) = self.__heading_name_and_level(

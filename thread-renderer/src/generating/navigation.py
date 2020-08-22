@@ -8,9 +8,7 @@ def generate_navigation(topic: Topic) -> str:
     path = topic.path(scope=Topic.Scope.GLOBAL)
     for topic_in_path in path[:-1]:
         if topic_in_path.is_file_level:
-            link = f'<a href="{topic_in_path.title_name()}.md">'
-            link += topic_in_path.name
-            link += '</a>'
+            link = f'[{topic_in_path.name}]({topic_in_path.title_name()}.md)'
             items.append(link)
         else:
             items.append(topic_in_path.name)
@@ -20,4 +18,4 @@ def generate_navigation(topic: Topic) -> str:
     items.append(last_item)
 
     output = ' <span style="font-style: bold">・</span> '.join(items)
-    return "<nav>当前位于：" + output + "</nav>\n"
+    return "[]()<nav>当前位于：" + output + "</nav>\n"

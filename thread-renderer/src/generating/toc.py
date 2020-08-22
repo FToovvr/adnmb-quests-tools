@@ -72,4 +72,4 @@ def generate_toc_using_details(
                     toc += '</blockquote>'
                 toc += '</details>'
 
-    return toc + "\n"
+    return "[]()" + toc + "\n"
