@@ -119,7 +119,7 @@ def load_divisions_configuration(path: Path) -> DivisionsConfiguration:
 
 @dataclass
 class Trace:
-    reply_count: int
+    last_processed_post_id: int
     div_cfg_sha1: str
 
     @staticmethod
@@ -145,21 +145,18 @@ class Trace:
                 h.update(chunk)
             div_cfg_sha1 = h.hexdigest()
         return Trace(
-            reply_count=dump_trace.reply_count,
+            last_processed_post_id=dump_trace.last_dumped_post_id,
             div_cfg_sha1=div_cfg_sha1,
         )
 
 
 @dataclass
 class DumpTrace:
-    reply_count: int
+    last_dumped_post_id: int
 
     @staticmethod
     def load_from_obj(obj: Dict[Any]) -> DumpTrace:
-        return DumpTrace(**obj)
-
-    def as_obj(self):
-        return self.__dict__
+        return DumpTrace(last_dumped_post_id=obj["last_dumped_post_id"])
 
 
 def needs_update(
@@ -177,7 +174,7 @@ def needs_update(
     with open(trace_file_path) as trace_file:
         trace = Trace.load_from_obj(json.load(trace_file))
 
-    if trace.reply_count != current_trace.reply_count:
+    if trace.last_processed_post_id != current_trace.last_processed_post_id:
         return True
 
     if trace.div_cfg_sha1 != current_trace.div_cfg_sha1:
