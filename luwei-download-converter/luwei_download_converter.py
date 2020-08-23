@@ -39,7 +39,9 @@ def main(args: List[str]):
                 thread_body.pop("replys")
                 thread_body.pop("replyCount")
                 with open(args.dump_folder_path / "thread.json", "w+") as thread_file:
-                    json.dump(thread_body, thread_file, indent=2)
+                    json.dump(thread_body, thread_file,
+                              indent=2, ensure_ascii=False)
+                    thread_file.write("\n")
 
             known_reply_count = max(
                 known_reply_count, int(thread_page["replyCount"]))
@@ -47,7 +49,8 @@ def main(args: List[str]):
             replies = list(filter(
                 lambda post: post["userid"] != "芦苇", thread_page["replys"]))
             with open(args.dump_folder_path / "pages" / f"{page_number}.json", "w+") as page_file:
-                json.dump(replies, page_file, indent=2)
+                json.dump(replies, page_file, indent=2, ensure_ascii=False)
+                page_file.write("\n")
 
     with open(args.dump_folder_path / ".trace.json", "w+") as trace_file:
         json.dump({"known_reply_count": known_reply_count,
