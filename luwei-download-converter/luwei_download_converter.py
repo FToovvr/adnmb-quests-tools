@@ -19,7 +19,8 @@ def main(args: List[str]):
     logging.debug(f"args: {args}")
     args = parse_args(prog=args[0], args=args[1:])
 
-    shutil.rmtree(args.dump_folder_path)
+    if args.dump_folder_path.exists():
+        shutil.rmtree(args.dump_folder_path)
     args.dump_folder_path.mkdir(parents=True)
     (args.dump_folder_path / "pages").mkdir(parents=True)
 
