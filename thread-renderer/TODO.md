@@ -6,10 +6,7 @@
 
 ### 优先
 
-* [ ] 细化对引用链接展开的控制，如支持生成内容折叠的details标签
-* [ ] 各文件中的目录列表
 * [ ] `post-rules[].description`
-* [ ] `expand-quote-links: true | false`改为`quote-link-rules: open | close | plain | { … }`
 * [ ] 在叶段落标题后添加「返回最顶部」按钮
 * [ ] 支持多行`text-until`
 
@@ -23,3 +20,5 @@
 
 * [ ] 为被切割的串提供更多上下文，如一共切割了多少部分，当前是第几部分
 * [ ] 在没有指定日志配置文件时，调低日志等级阈值到INFO
+* [ ] 细化对引用链接展开的控制，如支持生成内容折叠的details标签
+  * [ ] `expand-quote-links: true | false`改为`quote-link-rules: open | close | plain | { … }`
