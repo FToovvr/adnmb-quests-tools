@@ -141,6 +141,7 @@ class DivisionRule:
     class PostRule:
         expand_quote_links: Optional[Union[bool, List[int]]] = None
         appended: Optional[List[int]] = None
+        show_attachment: Optional[bool] = None
 
         @staticmethod
         def load_from_object(obj: Optional[Dict[str, Any]]) -> DivisionRule.PostRule:
@@ -157,6 +158,7 @@ class DivisionRule:
             return DivisionRule.PostRule(
                 expand_quote_links=expand_quote_links,
                 appended=appended,
+                show_attachment=obj.get("show-attachment", True),
             )
 
         @staticmethod

@@ -55,7 +55,7 @@ class PostRender:
             lines.extend([header_line, ""])
 
         # 生成图片部分
-        if post.attachment_name != None:
+        if post.attachment_name != None and options.post_rule.show_attachment != False:
             image = f'<img width="40%" src="https://nmbimg.fastmirror.org/image/{post.adnmb_img}{post.adnmb_ext}">'
             lines.extend([image, ""])
 
