@@ -233,18 +233,25 @@ class OutputsGenerator:
                         in_file_state: "OutputsGenerator.InFileState"):
         output = ""
         for id in only_ids:
-            expand_quote_links = None
-            if post_rules != None and id in post_rules:
-                expand_quote_links = post_rules[id].expand_quote_links
-            expand_quote_links = expand_quote_links or self.defaults.expand_quote_links
+            post_rule = DivisionRule.PostRule.merge(
+                DivisionRule.PostRule(
+                    expand_quote_links=self.defaults.expand_quote_links
+                ),
+                (post_rules or {}).get(id, None)
+            )
 
             output += in_file_state.post_render.render(
                 self.post_pool[id],
                 options=PostRender.Options(
-                    expand_quote_links=expand_quote_links,
+                    post_rule=post_rule,
                     style=self.defaults.post_style,
                 ),
             ) + "\n"
+
+            if isinstance(post_rule.appended, list):
+                for appended_post_id in post_rule.appended:
+                    self.global_state.unprocessed_post_ids.pop(
+                        appended_post_id, None)
 
             self.global_state.unprocessed_post_ids.pop(id, None)
 
@@ -265,21 +272,28 @@ class OutputsGenerator:
                 elif id == until.id:
                     until_text = until.text_until
 
-            expand_quote_links = None
-            if post_rules != None and id in post_rules:
-                expand_quote_links = post_rules[id].expand_quote_links
-            expand_quote_links = expand_quote_links or self.defaults.expand_quote_links
-
             post = self.post_pool[id]
+            post_rule = DivisionRule.PostRule.merge(
+                DivisionRule.PostRule(
+                    expand_quote_links=self.defaults.expand_quote_links
+                ),
+                (post_rules or {}).get(id, None)
+            )
+
             output += in_file_state.post_render.render(
                 post,
                 options=PostRender.Options(
-                    expand_quote_links=expand_quote_links,
+                    post_rule=post_rule,
                     style=self.defaults.post_style,
                     after_text=self.global_state.after_text,
                     until_text=until_text,
                 ),
             ) + "\n"
+
+            if isinstance(post_rule.appended, list):
+                for appended_post_id in post_rule.appended:
+                    self.global_state.unprocessed_post_ids.pop(
+                        appended_post_id, None)
 
             self.global_state.after_text = until_text
             if until_text != None:

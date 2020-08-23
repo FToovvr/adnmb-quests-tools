@@ -4,7 +4,7 @@ from typing import OrderedDict, List, Set, Union, Optional, Tuple
 from dataclasses import dataclass
 
 from ..thread import Post
-from ..configloader import DivisionsConfiguration
+from ..configloader import DivisionsConfiguration, DivisionRule
 
 
 @dataclass(frozen=True)
@@ -17,7 +17,7 @@ class PostRender:
 
     @dataclass
     class Options:
-        expand_quote_links: Union[bool, List[int]]
+        post_rule: DivisionRule.PostRule
         style: DivisionsConfiguration.Defaults.PostStyle
         after_text: Optional[str] = None
         until_text: Optional[str] = None
@@ -81,7 +81,7 @@ class PostRender:
             if line.strip() == "":
                 lines.append("</p><p>")
             else:
-                if options.expand_quote_links == False:
+                if options.post_rule.expand_quote_links == False:
                     # <span> 标签用于防止文本被被当做markdown解析
                     # 两个空格是markdown换行
                     lines.append(line+"<br />")
@@ -95,6 +95,24 @@ class PostRender:
         if options.until_text != None:
             lines.extend(
                 ["", '<p style="color: gray; font-size: smaller">（…）</p>'])
+
+        # 生成附加部分
+        if nest_level == 0 and isinstance(options.post_rule.appended, list):
+            lines.extend(["", '<hr />',
+                          '<p style="font-style: italic">附加：</p>'])
+
+            for appended_post_id in options.post_rule.appended:
+                lines.extend(self.__render_lines(
+                    self.post_pool[appended_post_id],
+                    options=options.clone_and_replace_with(
+                        post_rule=DivisionRule.PostRule.merge(
+                            old=options.post_rule,
+                            new=DivisionRule.PostRule(appended=False)
+                        ),
+                        after_text=None, until_text=None,
+                    ),
+                    nest_level=nest_level+0,
+                ))
 
         if options.style == DivisionsConfiguration.Defaults.PostStyle.DETAILS_BLOCKQUOTE:
             lines.append('</details>')
@@ -131,9 +149,9 @@ class PostRender:
                 # 该引用链接位于串外，无力展开
                 # TODO: 是不是可以给个链接？
                 unappened_content += f'{content_before}<font color="#789922">&gt;&gt;No.{quote_link_id}（串外）</font>'
-            elif options.expand_quote_links == False or (
-                    isinstance(options.expand_quote_links, list) and
-                    quote_link_id not in options.expand_quote_links):
+            elif options.post_rule.expand_quote_links == False or (
+                    isinstance(options.post_rule.expand_quote_links, list) and
+                    quote_link_id not in options.post_rule.expand_quote_links):
                 # 配置中要求不要展开
                 # 也许可以考虑在类型是 details-blockquote 时包含内容，但默认折叠？
                 unappened_content += f'{content_before}<font color="#789922">&gt;&gt;No.{quote_link_id}</font>'
@@ -146,7 +164,6 @@ class PostRender:
                 if line.strip() != "":
                     lines.append(line+"<br />")
 
-                lines.append("<p>")
                 lines.extend(self.__render_lines(
                     self.post_pool[quote_link_id],
                     options=options.clone_and_replace_with(
@@ -154,7 +171,6 @@ class PostRender:
                     ),
                     nest_level=nest_level+1,
                 ))
-                lines.append("</p>")
         if unappened_content.strip() != "":
             lines.append(unappened_content+"<br />")
 

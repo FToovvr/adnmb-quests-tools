@@ -139,7 +139,8 @@ class DivisionRule:
 
     @dataclass(frozen=True)
     class PostRule:
-        expand_quote_links: Optional[Union[bool, List[int]]]
+        expand_quote_links: Optional[Union[bool, List[int]]] = None
+        appended: Optional[List[int]] = None
 
         @staticmethod
         def load_from_object(obj: Optional[Dict[str, Any]]) -> DivisionRule.PostRule:
@@ -149,9 +150,31 @@ class DivisionRule:
             if type(expand_quote_links) is int:
                 expand_quote_links = [expand_quote_links]
 
+            appended = obj.get("appended", None)
+            if type(appended) is int:
+                appended = [appended]
+
             return DivisionRule.PostRule(
                 expand_quote_links=expand_quote_links,
+                appended=appended,
             )
+
+        @staticmethod
+        def merge(old: DivisionRule.PostRule, new: DivisionRule.PostRule) -> DivisionRule.PostRule:
+            rule_dict = None
+            if old != None:
+                rule_dict = dict(old.__dict__)
+            if new != None:
+                if rule_dict != None:
+                    new = [(k, v)
+                           for k, v in new.__dict__.items() if v != None]
+                    rule_dict.update(new)
+                else:
+                    rule_dict = dict(new.__dict__)
+
+            if rule_dict != None:
+                return DivisionRule.PostRule(**rule_dict)
+            return None
 
     @staticmethod
     def load_from_object(obj: Dict[Any]) -> DivisionRule:
