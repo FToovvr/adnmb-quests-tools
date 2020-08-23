@@ -10,6 +10,8 @@
 * [ ] 各文件中的目录列表
 * [ ] `post-rules[].description`
 * [ ] `expand-quote-links: true | false`改为`quote-link-rules: open | close | plain | { … }`
+* [ ] 在叶段落标题后添加「返回最顶部」按钮
+* [ ] 支持多行`text-until`
 
 ### 一般重要
 
