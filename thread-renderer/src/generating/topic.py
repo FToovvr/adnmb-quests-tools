@@ -5,6 +5,9 @@ from enum import Enum, auto
 from contextlib import contextmanager
 
 import urllib
+import unicodedata
+
+from emoji import UNICODE_EMOJI
 
 from ..configloader import DivisionsConfiguration
 
@@ -16,6 +19,7 @@ class Topic:
     index: int
 
     name: str
+    github_markdown_preview_heading_id: str
     nest_level: int
     number: int
     is_file_level: bool = False
@@ -59,7 +63,7 @@ class Topic:
         return heading
 
     def __heading_id(self) -> str:
-        id = urllib.parse.quote(self.name)
+        id = urllib.parse.quote(self.github_markdown_preview_heading_id)
         if self.number != 1:
             id += f"-{self.number-1}"
         return id
@@ -106,6 +110,18 @@ class Topic:
                     break
         return path
 
+    @staticmethod
+    def get_github_markdown_preview_heading_id(name: str) -> str:
+        result = ""
+        for char in name:
+            category = unicodedata.category(char)
+            if category.startswith("P") or category.startswith("S"):
+                continue
+            if char in UNICODE_EMOJI:
+                continue
+            result += char
+        return result
+
 
 class TopicPath(list):
     def names(self) -> List[str]:
@@ -124,11 +140,15 @@ class TopicManager:
     current_nest_level = 0
 
     def new_topic(self, name: str, is_file_level: bool) -> Topic:
-        number = self.topic_counts.get(name, 0) + 1
-        self.topic_counts[name] = number
+        github_markdown_preview_heading_id = Topic.get_github_markdown_preview_heading_id(
+            name)
+        number = self.topic_counts.get(
+            github_markdown_preview_heading_id, 0) + 1
+        self.topic_counts[github_markdown_preview_heading_id] = number
         topic = Topic(
             manager=self, index=len(self.topics),
-            name=name, nest_level=self.current_nest_level,
+            name=name, github_markdown_preview_heading_id=github_markdown_preview_heading_id,
+            nest_level=self.current_nest_level,
             number=number, is_file_level=is_file_level,
         )
         self.topics.append(topic)
