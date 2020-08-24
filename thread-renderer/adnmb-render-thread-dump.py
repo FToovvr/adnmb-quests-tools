@@ -21,6 +21,7 @@ from hashlib import sha1
 import yaml
 
 # this library
+from src.trace import Trace, get_processable_page_info_list, needs_update
 from src.configloader import DivisionsConfiguration
 from src.thread import Thread
 from src.generating import OutputsGenerator
@@ -38,9 +39,13 @@ def main(args: List[str]):
         logging.critical("配置未允许覆写输出文件夹，呃输出文件夹已存在")
         exit(1)
 
+    (page_info_list, stop_reason) = get_processable_page_info_list(
+        args.dump_folder_path)
+    logging.info(f"将要处理的页数截止到 {page_info_list[-1].number} 页，由于{stop_reason}")
     current_trace = Trace.evaluate(
         div_cfg_path=args.div_cfg_path,
         dump_folder_path=args.dump_folder_path,
+        page_info_list=page_info_list,
     )
     if not needs_update(
         current_trace=current_trace,
@@ -52,7 +57,8 @@ def main(args: List[str]):
 
     div_cfg = load_divisions_configuration(args.div_cfg_path)
 
-    thread = Thread.load_from_dump_folder(args.dump_folder_path)
+    thread = Thread.load_from_dump_folder(
+        args.dump_folder_path, page_info_list)
 
     if args.output_folder_path.exists():
         logging.info(f"输出文件夹已存在。根据配置，将覆写该文件夹")
@@ -115,72 +121,6 @@ def load_divisions_configuration(path: Path) -> DivisionsConfiguration:
             div_cfg_file,
             root_folder_path=Path(path).parent.absolute(),
         )
-
-
-@dataclass
-class Trace:
-    last_processed_post_id: int
-    div_cfg_sha1: str
-
-    @staticmethod
-    def load_from_obj(obj: Dict[Any]):
-        return Trace(**obj)
-
-    def as_obj(self):
-        return self.__dict__
-
-    @staticmethod
-    def evaluate(
-        div_cfg_path: Path,
-        dump_folder_path: Path,
-    ) -> Trace:
-        with open(dump_folder_path / ".trace.json") as dump_trace_file:
-            dump_trace = DumpTrace.load_from_obj(json.load(dump_trace_file))
-        with open(div_cfg_path, 'rb') as div_cfg_file:
-            h = sha1()
-            while True:
-                chunk = div_cfg_file.read(h.block_size)
-                if not chunk:
-                    break
-                h.update(chunk)
-            div_cfg_sha1 = h.hexdigest()
-        return Trace(
-            last_processed_post_id=dump_trace.last_dumped_post_id,
-            div_cfg_sha1=div_cfg_sha1,
-        )
-
-
-@dataclass
-class DumpTrace:
-    last_dumped_post_id: int
-
-    @staticmethod
-    def load_from_obj(obj: Dict[Any]) -> DumpTrace:
-        return DumpTrace(last_dumped_post_id=obj["last_dumped_post_id"])
-
-
-def needs_update(
-    current_trace: Trace,
-    output_folder_path: Path,
-    ignores_trace: bool
-):
-    trace_file_path = output_folder_path / ".trace.json"
-    if not trace_file_path.exists():
-        return True
-    elif ignores_trace:
-        logging.info(f"根据配置，忽略状态追踪文件")
-        return True
-
-    with open(trace_file_path) as trace_file:
-        trace = Trace.load_from_obj(json.load(trace_file))
-
-    if trace.last_processed_post_id != current_trace.last_processed_post_id:
-        return True
-
-    if trace.div_cfg_sha1 != current_trace.div_cfg_sha1:
-        return True
-
-    return False
 
 
 if __name__ == "__main__":

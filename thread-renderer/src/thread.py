@@ -7,16 +7,19 @@ from dataclasses import dataclass
 from pathlib import Path
 import json
 from os.path import splitext
+import logging
+
+from .trace import PageInfo
 
 
 @dataclass(frozen=True)
 class Thread:
 
     body: "Post"
-    pages: Dict[int, List["Post"]]
+    pages: List[List["Post"]]
 
     @staticmethod
-    def load_from_dump_folder(path: Path) -> Thread:
+    def load_from_dump_folder(path: Path, page_info_list: List[PageInfo]) -> Thread:
         thread_id = None
         with open(path / "thread.json") as thread_file:
             thread_object = json.load(thread_file)
@@ -27,21 +30,20 @@ class Thread:
                 page_number=1,
             )
 
-        pages = dict()
-        for page_path in (path / "pages").iterdir():
-            with open(page_path) as page_file:
-                page_number = int(splitext(page_path.name)[0])
+        pages = []
+        for page_info in page_info_list:
+            with open(path / "pages" / page_info.filename()) as page_file:
                 page_object = json.load(page_file)
                 page = list(map(
                     lambda post_object:
                     Post.load_from_object(
                         post_object,
                         thread_id=thread_id,
-                        page_number=page_number,
+                        page_number=page_info.number,
                     ),
                     page_object,
                 ))
-                pages[page_number] = page
+                pages.append(page)
 
         return Thread(
             body=body,
@@ -52,8 +54,8 @@ class Thread:
         posts = OrderedDict()
 
         posts[self.body.id] = self.body
-        for page_number in sorted(self.pages.keys()):
-            for post in self.pages[page_number]:
+        for page in self.pages:
+            for post in page:
                 posts[post.id] = post
 
         return posts

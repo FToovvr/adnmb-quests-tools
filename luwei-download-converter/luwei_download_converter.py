@@ -27,7 +27,6 @@ def main(args: List[str]):
     data_folder_path = args.luwei_downloaded_thread_folder_path / "data"
     max_page_number = get_max_page_number(data_folder_path)
 
-    known_reply_count, last_dumped_post_id = 0, None
     for page_number in range(1, max_page_number+1):
         data_file_path = data_folder_path / f"{page_number}.data"
         with open(data_file_path) as data_file:
@@ -44,18 +43,11 @@ def main(args: List[str]):
                               indent=2, ensure_ascii=False)
                     thread_file.write("\n")
 
-            known_reply_count = max(
-                known_reply_count, int(thread_page["replyCount"]))
-
             replies = list(filter(
                 lambda post: post["userid"] != "芦苇", thread_page["replys"]))
             with open(args.dump_folder_path / "pages" / f"{page_number}.json", "w+") as page_file:
                 json.dump(replies, page_file, indent=2, ensure_ascii=False)
                 page_file.write("\n")
-
-    with open(args.dump_folder_path / ".trace.json", "w+") as trace_file:
-        json.dump({"known_reply_count": known_reply_count,
-                   "last_dumped_post_id": last_dumped_post_id},  trace_file, indent=2)
 
 
 def get_max_page_number(data_folder_path: Path) -> int:
