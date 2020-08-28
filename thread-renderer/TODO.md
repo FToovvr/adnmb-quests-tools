@@ -11,6 +11,8 @@
 * [ ] 支持多行`text-until`
 * [ ] 支持为附加内容分段落、起名
 * [ ] 支持配置是否不增加附加内容的嵌套层级
+* [ ] `show-attachment: top | bottom`
+* [ ] 生成frontmatter
 
 ### 一般重要
 
