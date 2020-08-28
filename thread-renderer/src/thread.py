@@ -72,7 +72,6 @@ class Post:
     content: str
     is_sage: bool
     is_admin: bool
-    attachment_name: Optional[str]
     adnmb_img: Optional[str]
     adnmb_ext: Optional[str]
 
@@ -103,7 +102,6 @@ class Post:
         content = obj["content"]
         is_sage = int(obj["sage"]) != 0
         is_admin = int(obj["admin"]) != 0
-        attachment_name = obj.get("fileName", None)
         adnmb_img = obj["img"]
         if adnmb_img == "":
             adnmb_img = None
@@ -117,7 +115,6 @@ class Post:
             email=email, title=title,
             content=content,
             is_sage=is_sage, is_admin=is_admin,
-            attachment_name=attachment_name,
             adnmb_img=adnmb_img, adnmb_ext=adnmb_ext,
 
             thread_id=thread_id,
