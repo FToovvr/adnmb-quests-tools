@@ -126,7 +126,7 @@ class PostRender:
         if is_part:
             header_items.append("（部分）")
         header_items.extend([" ", f"{post.created_at.now}",
-                             " ", f'<a href="https://adnmb2.com/t/{post.thread_id}?page={post.page_number}">',
+                             " ", f'<a href="https://adnmb3.com/t/{post.thread_id}?page={post.page_number}">',
                              f"P{post.page_number}", f'</a>'])
         if not is_po:
             header_items.extend([" ", f"ID:{post.user_id}"])
