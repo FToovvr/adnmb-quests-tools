@@ -126,9 +126,9 @@ class OutputsGenerator:
         elif in_file_state == None:
             raise "what? in __generate"
 
-        if isinstance(rule.match_rule, DivisionRule.MatchUntil) and rule.match_rule.exclude != None:
+        if isinstance(rule.match_rule, DivisionRule.MatchUntil) and rule.match_rule.excluded != None:
             self.__remove_excluded_posts_fron_unprocessed_posts(
-                excluded_post_ids=rule.match_rule.exclude,
+                excluded_post_ids=rule.match_rule.excluded,
                 match_until_id=rule.match_rule.id,
             )
 

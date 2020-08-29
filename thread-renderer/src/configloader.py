@@ -131,7 +131,7 @@ class DivisionRule:
     class MatchUntil:
         id: int
         text_until: Optional[str] = None
-        exclude: Optional[List[int]] = None
+        excluded: Optional[List[int]] = None
 
     @dataclass(frozen=True)
     class MatchOnly:
@@ -201,10 +201,10 @@ class DivisionRule:
             if type(until) is int:
                 match_rule = DivisionRule.MatchUntil(id=until)
             else:
-                exclude = until.get("exclude", None)
-                if type(exclude) is int:
-                    exclude = [exclude]
-                elif isinstance(exclude, list):
+                excluded = until.get("excluded", None)
+                if type(excluded) is int:
+                    excluded = [excluded]
+                elif isinstance(excluded, list):
                     # 支持将嵌套扁平化
                     # 用于 workaround vscode 的 yaml 插件在格式化过长的数组时，会让每个元素占用一行
                     def flatten(the_list: List[Any]):
@@ -215,11 +215,11 @@ class DivisionRule:
                             else:
                                 result.append(elem)
                         return result
-                    exclude = flatten(exclude)
+                    excluded = flatten(excluded)
                 match_rule = DivisionRule.MatchUntil(
                     id=until["id"],
                     text_until=until.get("text-until", None),
-                    exclude=exclude,
+                    excluded=excluded,
                 )
         if "only" in obj:
             if match_rule != None:
