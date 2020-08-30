@@ -9,6 +9,9 @@ from pathlib import Path
 
 import yaml
 
+from .matchrule import MatchRule, MatchUntil, MatchOnly
+from .postrules import PostRules, PostRule
+
 
 @dataclass(frozen=True)
 class DivisionsConfiguration:
@@ -122,61 +125,9 @@ class DivisionRule:
     title: str
     divisionType: "DivisionType"  # = DivisionType.SECTION
     intro: Optional[str] = None
-    match_rule: Union[DivisionRule.MatchUntil,
-                      DivisionRule.MatchOnly, None] = None
-    post_rules: Optional[Dict[int, DivisionRule.PostRule]] = None
+    match_rule: MatchRule = None
+    post_rules: PostRules = None
     children: Optional[List[DivisionRule]] = None
-
-    @dataclass(frozen=True)
-    class MatchUntil:
-        id: int
-        text_until: Optional[str] = None
-        excluded: Optional[List[int]] = None
-
-    @dataclass(frozen=True)
-    class MatchOnly:
-        ids: [int]
-
-    @dataclass(frozen=True)
-    class PostRule:
-        expand_quote_links: Optional[Union[bool, List[int]]] = None
-        appended: Optional[List[int]] = None
-        show_attachment: Optional[bool] = None
-
-        @staticmethod
-        def load_from_object(obj: Optional[Dict[str, Any]]) -> DivisionRule.PostRule:
-            obj = obj or dict()
-
-            expand_quote_links = obj.get("expand-quote-links", None)
-            if type(expand_quote_links) is int:
-                expand_quote_links = [expand_quote_links]
-
-            appended = obj.get("appended", None)
-            if type(appended) is int:
-                appended = [appended]
-
-            return DivisionRule.PostRule(
-                expand_quote_links=expand_quote_links,
-                appended=appended,
-                show_attachment=obj.get("show-attachment", True),
-            )
-
-        @staticmethod
-        def merge(old: DivisionRule.PostRule, new: DivisionRule.PostRule) -> DivisionRule.PostRule:
-            rule_dict = None
-            if old != None:
-                rule_dict = dict(old.__dict__)
-            if new != None:
-                if rule_dict != None:
-                    new = [(k, v)
-                           for k, v in new.__dict__.items() if v != None]
-                    rule_dict.update(new)
-                else:
-                    rule_dict = dict(new.__dict__)
-
-            if rule_dict != None:
-                return DivisionRule.PostRule(**rule_dict)
-            return None
 
     @staticmethod
     def load_from_object(obj: Dict[Any]) -> DivisionRule:
@@ -199,7 +150,7 @@ class DivisionRule:
                 raise "multiple match rules not allowed"
             until = obj["until"]
             if type(until) is int:
-                match_rule = DivisionRule.MatchUntil(id=until)
+                match_rule = MatchUntil(id=until)
             else:
                 excluded = until.get("excluded", None)
                 if type(excluded) is int:
@@ -216,7 +167,7 @@ class DivisionRule:
                                 result.append(elem)
                         return result
                     excluded = flatten(excluded)
-                match_rule = DivisionRule.MatchUntil(
+                match_rule = MatchUntil(
                     id=until["id"],
                     text_until=until.get("text-until", None),
                     excluded=excluded,
@@ -226,13 +177,13 @@ class DivisionRule:
                 raise "multiple match rules not allowed"
             only = obj["only"]
             if type(only) is int:
-                match_rule = DivisionRule.MatchOnly(ids=[only])
+                match_rule = MatchOnly(ids=[only])
             else:  # List[int]
-                match_rule = DivisionRule.MatchOnly(ids=only)
+                match_rule = MatchOnly(ids=only)
 
         post_rules = obj.get("post-rules", None)
         if post_rules != None:
-            post_rules = dict((id, DivisionRule.PostRule.load_from_object(
+            post_rules = dict((id, PostRule.load_from_object(
                 rule_obj)) for (id, rule_obj) in post_rules.items())
 
         children = obj.get("children", list())

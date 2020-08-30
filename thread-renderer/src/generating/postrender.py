@@ -4,7 +4,7 @@ from typing import OrderedDict, List, Set, Union, Optional, Tuple
 from dataclasses import dataclass
 
 from ..thread import Post
-from ..configloader import DivisionsConfiguration, DivisionRule
+from ..configloader import DivisionsConfiguration, DivisionRule, PostRule
 
 
 @dataclass(frozen=True)
@@ -17,7 +17,7 @@ class PostRender:
 
     @dataclass
     class Options:
-        post_rule: DivisionRule.PostRule
+        post_rule: PostRule
         style: DivisionsConfiguration.Defaults.PostStyle
         after_text: Optional[str] = None
         until_text: Optional[str] = None
@@ -105,9 +105,9 @@ class PostRender:
                 lines.extend(self.__render_lines(
                     self.post_pool[appended_post_id],
                     options=options.clone_and_replace_with(
-                        post_rule=DivisionRule.PostRule.merge(
+                        post_rule=PostRule.merge(
                             old=options.post_rule,
-                            new=DivisionRule.PostRule(appended=False)
+                            new=PostRule(appended=False)
                         ),
                         after_text=None, until_text=None,
                     ),

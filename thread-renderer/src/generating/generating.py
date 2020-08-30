@@ -14,6 +14,7 @@ from .postrender import PostRender
 from .topic import Topic, TopicManager
 from .toc import generate_toc
 from .navigation import generate_navigation
+from ..configloader import MatchUntil, MatchOnly, PostRule
 
 
 @dataclass
@@ -126,7 +127,7 @@ class OutputsGenerator:
         elif in_file_state == None:
             raise "what? in __generate"
 
-        if isinstance(rule.match_rule, DivisionRule.MatchUntil) and rule.match_rule.excluded != None:
+        if isinstance(rule.match_rule, MatchUntil) and rule.match_rule.excluded != None:
             self.__remove_excluded_posts_fron_unprocessed_posts(
                 excluded_post_ids=rule.match_rule.excluded,
                 match_until_id=rule.match_rule.id,
@@ -147,13 +148,13 @@ class OutputsGenerator:
             )
 
         self_output = ""
-        if isinstance(rule.match_rule, DivisionRule.MatchOnly):
+        if isinstance(rule.match_rule, MatchOnly):
             self_output = self.__generate_only(
                 only_ids=rule.match_rule.ids,
                 post_rules=rule.post_rules,
                 in_file_state=in_file_state,
             )
-        elif isinstance(rule.match_rule, DivisionRule.MatchUntil):
+        elif isinstance(rule.match_rule, MatchUntil):
             self_output = self.__generate_until(
                 until=rule.match_rule,
                 post_rules=rule.post_rules,
@@ -229,12 +230,12 @@ class OutputsGenerator:
 
     def __generate_only(self,
                         only_ids: List[int],
-                        post_rules: Optional[Dict[int, DivisionRule.PostRule]],
+                        post_rules: Optional[Dict[int, PostRule]],
                         in_file_state: "OutputsGenerator.InFileState"):
         output = ""
         for id in only_ids:
-            post_rule = DivisionRule.PostRule.merge(
-                DivisionRule.PostRule(
+            post_rule = PostRule.merge(
+                PostRule(
                     expand_quote_links=self.defaults.expand_quote_links
                 ),
                 (post_rules or {}).get(id, None)
@@ -258,8 +259,8 @@ class OutputsGenerator:
         return output
 
     def __generate_until(self,
-                         until: Optional[DivisionRule.MatchUntil],
-                         post_rules: Optional[Dict[int, DivisionRule.PostRule]],
+                         until: Optional[MatchUntil],
+                         post_rules: Optional[Dict[int, PostRule]],
                          in_file_state: "OutputsGenerator.InFileState") -> str:
         output = ""
         while len(self.global_state.unprocessed_post_ids.keys()) != 0:
@@ -273,8 +274,8 @@ class OutputsGenerator:
                     until_text = until.text_until
 
             post = self.post_pool[id]
-            post_rule = DivisionRule.PostRule.merge(
-                DivisionRule.PostRule(
+            post_rule = PostRule.merge(
+                PostRule(
                     expand_quote_links=self.defaults.expand_quote_links
                 ),
                 (post_rules or {}).get(id, None)
@@ -303,7 +304,7 @@ class OutputsGenerator:
         return output
 
     def __generate_leftover(self,
-                            post_rules: Optional[Dict[int, DivisionRule.PostRule]],
+                            post_rules: Optional[Dict[int, PostRule]],
                             in_file_state: "OutputsGenerator.InFileState") -> str:
         leftover_output = self.__generate_until(
             until=None,
