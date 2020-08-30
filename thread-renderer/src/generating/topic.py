@@ -103,6 +103,8 @@ class Topic:
             if current_level == None or topic.nest_level < current_level:
                 current_level = topic.nest_level
                 path.insert(0, topic)
+            elif topic.nest_level == current_level:
+                continue
             if topic.is_file_level and scope != Topic.Scope.GLOBAL:
                 if False:  # scope == Topic.Scope.FILE:
                     break
