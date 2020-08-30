@@ -128,8 +128,13 @@ class PostRender:
         header_items.extend([" ", f"{post.created_at.now}",
                              " ", f'<a href="https://adnmb3.com/t/{post.thread_id}?page={post.page_number}">',
                              f"P{post.page_number}", f'</a>'])
-        if not is_po:
-            header_items.extend([" ", f"ID:{post.user_id}"])
+
+        header_items.extend(
+            [" ", f'ID:<span style="font-family: monospace">{post.user_id}</span>'])
+        if is_po:
+            header_items.extend(
+                [" ", f'<span style="color: #2d7091; font-size: smaller; font-weight: bold">(PO主)</span>'])
+
         return "".join(header_items)
 
     def __render_content_line(self, line: str, options: "PostRender.Options", nest_level: int) -> List[str]:
