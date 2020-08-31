@@ -10,7 +10,7 @@ from ..thread import Post
 from ..divisiontree import DivisionTreeNode, PostInNode
 from ..divisiontree.utils import githubize_heading_name
 
-from .postrender import PostRender
+from .postrenderer import PostRenderer
 from .exceptions import UnexpectedDivisionTypeException
 from .breadcrumb import render_breadcrumb
 from .toc import render_toc
@@ -70,14 +70,14 @@ class OutputsGenerator:
     def __generate_node(
         self,
         node: DivisionTreeNode,
-        post_renderer: Optional[PostRender]
+        post_renderer: Optional[PostRenderer]
     ) -> Optional[str]:
         logging.debug(
             f'{"#"*(node.global_nest_level+1)} {node.title} [{node.type}]',
         )
 
         if post_renderer == None or node.type in (None, DivisionType.FILE):
-            post_renderer = PostRender(
+            post_renderer = PostRenderer(
                 post_pool=self.post_pool,
                 po_cookies=self.div_cfg.po_cookies,
                 expanded_post_ids=set(),
@@ -135,7 +135,7 @@ class OutputsGenerator:
 
     def __render_posts(
         self,
-        post_renderer: PostRender,
+        post_renderer: PostRenderer,
         posts_in_node: List[PostInNode],
         post_rules: Optional[Dict[int, PostRule]],
     ) -> str:
@@ -158,7 +158,7 @@ class OutputsGenerator:
 
             output += post_renderer.render(
                 post=post,
-                options=PostRender.Options(
+                options=PostRenderer.Options(
                     post_rule=post_rule,
                     style=self.div_cfg.defaults.post_style,
                     after_text=post_in_node.after_text,
@@ -171,7 +171,7 @@ class OutputsGenerator:
     def __generate_children(
             self,
             children: List[DivisionTreeNode],
-            post_renderer: PostRender) -> str:
+            post_renderer: PostRenderer) -> str:
 
         outputs = map(lambda child: self.__generate_node(
             node=child,

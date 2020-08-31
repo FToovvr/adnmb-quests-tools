@@ -8,7 +8,7 @@ from ..configloader import DivisionsConfiguration, DivisionRule, PostRule
 
 
 @dataclass(frozen=True)
-class PostRender:
+class PostRenderer:
 
     post_pool: OrderedDict[int, Post]
     po_cookies: List[str]
@@ -22,15 +22,15 @@ class PostRender:
         after_text: Optional[str] = None
         until_text: Optional[str] = None
 
-        def clone_and_replace_with(self, **kwargs) -> "PostRender.Option":
+        def clone_and_replace_with(self, **kwargs) -> "PostRenderer.Option":
             d = dict(self.__dict__)
             d.update(kwargs)
-            return PostRender.Options(**d)
+            return PostRenderer.Options(**d)
 
-    def render(self, post, options: "PostRender.Options") -> str:
+    def render(self, post, options: "PostRenderer.Options") -> str:
         return "\n".join(self.__render_lines(post, options, nest_level=0)) + "\n"
 
-    def __render_lines(self, post, options: "PostRender.Options", nest_level: int) -> str:
+    def __render_lines(self, post, options: "PostRenderer.Options", nest_level: int) -> str:
 
         lines = []
 
@@ -137,10 +137,10 @@ class PostRender:
 
         return "".join(header_items)
 
-    def __render_content_line(self, line: str, options: "PostRender.Options", nest_level: int) -> List[str]:
+    def __render_content_line(self, line: str, options: "PostRenderer.Options", nest_level: int) -> List[str]:
         lines = []
         unappened_content = ""
-        for (content_before, quote_link_id) in PostRender.split_line_by_quote_link(line):
+        for (content_before, quote_link_id) in PostRenderer.split_line_by_quote_link(line):
             if quote_link_id == None:
                 unappened_content += content_before
                 continue
@@ -193,6 +193,6 @@ class PostRender:
         result = [(before_font_open, int(font_inner))]
         if after_font_close != "":
             result.extend(
-                PostRender.split_line_by_quote_link(after_font_close)
+                PostRenderer.split_line_by_quote_link(after_font_close)
             )
         return result
