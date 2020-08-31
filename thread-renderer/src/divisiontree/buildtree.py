@@ -157,6 +157,15 @@ class TreeBuilder:
     ) -> DivisionTreeNode:
         posts = list(filter(
             lambda post_in_node: self.post_pool[post_in_node.post_id].user_id in self.div_cfg.po_cookies, posts))
+
+        if self.remain_post != None:
+            posts[0] = PostInNode(
+                post_id=self.remain_post[0],
+                is_weak=True,
+                after_text=self.remain_post[1]
+            )
+            self.remain_post = None
+
         node = DivisionTreeNode(
             parent=parent_node,
             title="尚未整理",
