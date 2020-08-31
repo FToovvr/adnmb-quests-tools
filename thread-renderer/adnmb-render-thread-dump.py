@@ -24,7 +24,8 @@ import yaml
 from src.trace import Trace, get_processable_page_info_list, needs_update
 from src.configloader import DivisionsConfiguration
 from src.thread import Thread
-from src.generating import OutputsGenerator
+from src.divisiontree import TreeBuilder
+from src.generating import OutputsGenerator, OutputsGenerator2
 
 
 def main(args: List[str]):
@@ -65,10 +66,25 @@ def main(args: List[str]):
         rmtree(args.output_folder_path, ignore_errors=True)
 
     args.output_folder_path.mkdir(parents=True)
-    OutputsGenerator.generate_outputs(
-        output_folder_path=args.output_folder_path,
-        thread=thread,
-        configuration=div_cfg)
+
+    if False:
+        OutputsGenerator.generate_outputs(
+            output_folder_path=args.output_folder_path,
+            thread=thread,
+            configuration=div_cfg)
+    else:
+        post_pool = thread.flattened_post_dict()
+        (tree, post_claims) = TreeBuilder.build_tree(
+            post_pool=post_pool,
+            div_cfg=div_cfg,
+        )
+        OutputsGenerator2.generate_outputs(
+            output_folder_path=args.output_folder_path,
+            post_pool=post_pool,
+            div_cfg=div_cfg,
+            division_tree=tree,
+            post_claims=post_claims,
+        )
 
     if not args.no_generate_trace:
         with open(args.output_folder_path / ".trace.json", 'w') as trace_file:
