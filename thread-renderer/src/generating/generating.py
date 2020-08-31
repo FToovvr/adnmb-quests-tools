@@ -101,17 +101,17 @@ class OutputsGenerator:
                 toc_cfg=self.div_cfg.toc,
             )
 
+        if len(node.children or []) > 0:
+            output.children = self.__generate_children(
+                children=node.children,
+                post_renderer=post_renderer,
+            )
+
         if len(node.posts or []) > 0:
             output.self_posts = self.__render_posts(
                 post_renderer=post_renderer,
                 posts_in_node=node.posts,
                 post_rules=node.post_rules,
-            )
-
-        if len(node.children or []) > 0:
-            output.children = self.__generate_children(
-                children=node.children,
-                post_renderer=post_renderer,
             )
 
         output = output.build()
