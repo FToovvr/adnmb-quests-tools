@@ -1,1 +1,1 @@
-from .generating2 import OutputsGenerator as OutputsGenerator2
+from .generating import OutputsGenerator

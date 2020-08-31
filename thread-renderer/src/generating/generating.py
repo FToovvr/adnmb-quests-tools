@@ -12,8 +12,8 @@ from ..divisiontree.utils import githubize_heading_name
 
 from .postrender import PostRender
 from .exceptions import UnexpectedDivisionTypeException
-from .breadcrumb2 import render_breadcrumb
-from .toc2 import render_toc
+from .breadcrumb import render_breadcrumb
+from .toc import render_toc
 
 
 @dataclass
