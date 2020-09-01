@@ -1,10 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import OrderedDict, List, Dict, Optional, Tuple
 
-from ..configloader import DivisionsConfiguration, DivisionRule, DivisionType, MatchUntil, MatchOnly
+from ..configloader import DivisionsConfiguration, DivisionRule, DivisionType, MatchUntil, MatchOnly, Collecting
 from ..thread import Thread, Post
 
 from .divisiontree import DivisionTreeNode, PostInNode
+from .collectnodes import collect_nodes
 from .exceptions import UnknownMatchRule, OnlyMatchRuleHasChildrenException
 from .utils import githubize_heading_name
 
@@ -22,6 +23,8 @@ class TreeBuilder:
 
     has_been_built = False
 
+    collecting_nodes: List[DivisionTreeNode] = field(default_factory=list)
+
     def __init__(self, post_pool: OrderedDict[int, Post], div_cfg: DivisionsConfiguration):
         self.post_pool = post_pool
         self.post_ids = list(self.post_pool.keys())
@@ -29,6 +32,9 @@ class TreeBuilder:
         self.post_claims = {}
 
         self.div_cfg = div_cfg
+
+        # 为啥这个要在这里 init 而 `has_been_built` 不需要？
+        self.collecting_nodes = []
 
     @staticmethod
     def build_tree(post_pool: OrderedDict[int, Post], div_cfg: DivisionsConfiguration) -> "DivisionTreeNode":
@@ -59,6 +65,14 @@ class TreeBuilder:
                 githubize_heading_name(root.top_heading_name): 1,
             },
         ), self.div_cfg.division_rules))
+
+        for node in self.collecting_nodes:
+            assert(isinstance(node.children, Collecting))
+            node.children = collect_nodes(
+                node=root,
+                rule=node.children,
+                collecting_nodes=self.collecting_nodes,
+            )
 
         return root
 
@@ -103,13 +117,15 @@ class TreeBuilder:
             children_has_match_until = len(
                 list(filter(lambda c: isinstance(c.match_rule, MatchUntil), rule.children))) > 0
             if children_has_match_until:
-                node.children.append(
+                children = node.children or []
+                children.append(
                     self.__build_leftover_node(
                         posts=posts,
                         parent_node=node,
                         heading_name_counts=heading_name_counts,
                     )
                 )
+                node.children = children
             else:
                 node.posts = posts
         elif isinstance(rule.match_rule, MatchOnly):
@@ -120,6 +136,11 @@ class TreeBuilder:
                 else:
                     self.post_claims[post.post_id] = [node]
             node.posts = posts
+        elif isinstance(rule.match_rule, Collecting):
+            assert(rule.post_rules == None)
+            assert(rule.children == None or len(rule.children) == 0)
+            node.children = rule.match_rule
+            self.collecting_nodes.append(node)
         elif rule.match_rule == None:
             pass
         else:

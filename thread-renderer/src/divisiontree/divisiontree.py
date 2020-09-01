@@ -1,10 +1,10 @@
 from __future__ import annotations
-from typing import List, Optional
+from typing import List, Optional, Union
 from dataclasses import dataclass
 
 import urllib
 
-from ..configloader import DivisionType, MatchRule, PostRules
+from ..configloader import DivisionType, MatchRule, PostRules, Collecting
 
 from .utils import githubize_heading_name
 
@@ -22,7 +22,8 @@ class DivisionTreeNode:
     posts: Optional[List["PostInNode"]]
     post_rules: PostRules
 
-    children: List["DivisionTreeNode"]
+    # 建好后类型不会是 `Collecting`
+    children: Optional[Union[List["DivisionTreeNode"], Collecting]]
 
     # 用于 GitHub Markdown Preview
     @property

@@ -13,7 +13,6 @@
 * [ ] 支持配置是否不增加附加内容的嵌套层级
 * [ ] `show-attachment: top | bottom`
 * [ ] 生成frontmatter
-* [ ] 新的匹配规则：`collect.title-is`：匹配切割规则中的段落标题
 
 ### 一般重要
 
