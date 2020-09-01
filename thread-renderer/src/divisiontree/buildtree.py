@@ -162,7 +162,7 @@ class TreeBuilder:
             posts[0] = PostInNode(
                 post_id=self.remain_post[0],
                 is_weak=True,
-                after_text=self.remain_post[1]
+                after_text=self.remain_post[1],
             )
             self.remain_post = None
 
