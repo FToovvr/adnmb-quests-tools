@@ -40,7 +40,7 @@ def __render_toc(
     else:  # node.type == DivisionType.FILE
         link = f'⎆ [{heading_name}]({node.file_base_name}.md)'
 
-    if node.children == None:
+    if node.children == None or (not is_root and node.type == DivisionType.FILE):
         return f'<li>{link}</li>'
 
     if nest_level + 1 in toc_cfg.collapse_at_levels:
