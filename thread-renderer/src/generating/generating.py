@@ -7,7 +7,7 @@ from pathlib import Path
 
 from ..configloader import DivisionsConfiguration, DivisionType, PostRule
 from ..thread import Post
-from ..divisiontree import DivisionTreeNode, PostInNode
+from ..divisiontree import Node, DivisionNode, PostInNode, IncludeNode
 from ..divisiontree.utils import githubize_heading_name
 
 from .postrenderer import PostRenderer
@@ -17,7 +17,7 @@ from .toc import render_toc
 
 
 @dataclass
-class OutputBuilder:
+class DivisionOutputBuilder:
     breadcrumb: Optional[str] = None
     heading: Optional[str] = None
     intro: Optional[str] = None
@@ -42,34 +42,38 @@ class OutputsGenerator:
     post_pool: OrderedDict[int, Post]
 
     div_cfg: DivisionsConfiguration
+    div_cfg_folder_path: Path
 
-    division_tree: DivisionTreeNode
+    # root 一定是 `DivisionNode`
+    division_tree: DivisionNode
 
-    post_claims: Dict[int, DivisionTreeNode]
+    post_claims: Dict[int, DivisionNode]
 
     @staticmethod
     def generate_outputs(
         output_folder_path: Path,
         post_pool: OrderedDict[int, Post],
         div_cfg: DivisionsConfiguration,
-        division_tree: DivisionTreeNode,
-        post_claims: Dict[int, DivisionTreeNode]
+        div_cfg_folder_path: Path,
+        division_tree: DivisionNode,
+        post_claims: Dict[int, DivisionNode]
     ):
         generator = OutputsGenerator(
             output_folder_path=output_folder_path,
             post_pool=post_pool,
             div_cfg=div_cfg,
+            div_cfg_folder_path=div_cfg_folder_path,
             division_tree=division_tree,
             post_claims=post_claims,
         )
-        generator.__generate_node(
+        generator.__generate_division_node(
             node=generator.division_tree,
             post_renderer=None,
         )
 
-    def __generate_node(
+    def __generate_division_node(
         self,
-        node: DivisionTreeNode,
+        node: DivisionNode,
         post_renderer: Optional[PostRenderer]
     ) -> Optional[str]:
         logging.debug(
@@ -83,7 +87,7 @@ class OutputsGenerator:
                 expanded_post_ids=set(),
             )
 
-        output = OutputBuilder()
+        output = DivisionOutputBuilder()
 
         if node.type in (None, DivisionType.FILE):
             output.breadcrumb = render_breadcrumb(node)
@@ -170,20 +174,49 @@ class OutputsGenerator:
 
     def __generate_children(
             self,
-            children: List[DivisionTreeNode],
+            children: List[Node],
             post_renderer: PostRenderer) -> str:
 
-        outputs = map(lambda child: self.__generate_node(
-            node=child,
-            post_renderer=post_renderer
-        ), children)
+        outputs = []
+
+        for child in children:
+            if isinstance(child, DivisionNode):
+                outputs.append(self.__generate_division_node(
+                    node=child,
+                    post_renderer=post_renderer,
+                ))
+            elif isinstance(child, IncludeNode):
+                outputs.append(
+                    self.__generate_include_node(
+                        node=child,
+                    ))
+            else:
+                raise "? in __generate_children"
 
         return "\n".join(outputs)
 
+    def __generate_include_node(self, node: IncludeNode):
 
-def render_heading(node: DivisionTreeNode, is_top_level: bool):
+        output_file_name = f"{node.file_base_name}.md"
+
+        with open(self.div_cfg_folder_path / node.file_path) as input_file:
+            input = input_file.read()
+
+        with open(self.output_folder_path / output_file_name, "w+") as output_file:
+            output_file.write(render_breadcrumb(node) + "\n" + input)
+
+        output_for_parent = render_heading(
+            node=node,
+            is_top_level=False,
+        ) + "\n"
+        output_for_parent += f"⎆ [{node.title}]({output_file_name})\n"
+        return output_for_parent
+
+
+def render_heading(node: Node, is_top_level: bool):
 
     if is_top_level:
+        assert(isinstance(node, DivisionNode))
         nest_level = 0
         heading_name = node.top_heading_name
         heading_id = node.top_heading_id

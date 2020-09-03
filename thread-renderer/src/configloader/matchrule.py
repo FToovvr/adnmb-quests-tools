@@ -2,7 +2,7 @@ from typing import Union, Optional, List
 from dataclasses import dataclass
 
 
-MatchRule = Union["MatchUntil", "MatchOnly", "Collecting", None]
+MatchRule = Union["MatchUntil", "MatchOnly", "Collect", "Include", None]
 
 
 @dataclass(frozen=True)
@@ -18,5 +18,10 @@ class MatchOnly:
 
 
 @dataclass(frozen=True)
-class Collecting:
+class Collect:
     parent_title_matches: str
+
+
+@dataclass(frozen=True)
+class Include:
+    file_path: str

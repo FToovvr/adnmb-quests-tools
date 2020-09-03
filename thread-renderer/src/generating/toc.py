@@ -1,11 +1,11 @@
 from typing import Set
 
 from ..configloader import DivisionType, DivisionsConfiguration
-from ..divisiontree import DivisionTreeNode
+from ..divisiontree import Node, DivisionNode, IncludeNode
 
 
 def render_toc(
-    node: DivisionTreeNode,
+    node: DivisionNode,
     toc_cfg: DivisionsConfiguration.TOCUsingDetails,
     nest_level: int = 0
 ) -> str:
@@ -17,30 +17,32 @@ def render_toc(
 
 
 def __render_toc(
-    node: DivisionTreeNode,
+    node: DivisionNode,
     toc_cfg: DivisionsConfiguration.TOCUsingDetails,
     nest_level: int = 0
 ) -> str:
     is_root = nest_level == 0
 
     if is_root:
-        assert(node.type == DivisionType.FILE)
-    else:
-        assert(node.type in (DivisionType.FILE, DivisionType.SECTION))
-
-    if is_root:
+        assert(isinstance(node, DivisionNode)
+               and node.type == DivisionType.FILE)
         heading_name = node.top_heading_name
         heading_id = node.top_heading_id
     else:
+        assert(isinstance(node, IncludeNode)
+               or node.type in (DivisionType.FILE, DivisionType.SECTION))
         heading_name = node.title
         heading_id = node.heading_id
 
-    if node.type == DivisionType.SECTION or is_root:
+    if (isinstance(node, DivisionNode)
+            and (node.type == DivisionType.SECTION or is_root)):
         link = f'<a href="#{heading_id}">{heading_name}</a>'
-    else:  # node.type == DivisionType.FILE
+    else:  # isinstance(node, IncludeeNode) or node.type == DivisionType.FILE
         link = f'⎆ [{heading_name}]({node.file_base_name}.md)'
 
-    if node.children == None or (not is_root and node.type == DivisionType.FILE):
+    if ((not isinstance(node, DivisionNode))
+        or (node.children == None)
+            or (not is_root and node.type == DivisionType.FILE)):
         return f'<li>{link}</li>'
 
     if nest_level + 1 in toc_cfg.collapse_at_levels:

@@ -1,15 +1,15 @@
 from typing import List, Optional
 
-from ..configloader import Collecting
+from ..configloader import Collect
 
-from .divisiontree import DivisionTreeNode
+from .divisionnode import DivisionNode
 
 
 def collect_nodes(
-    node: DivisionTreeNode,
-    rule: Collecting,
-    collecting_nodes: List[DivisionTreeNode]
-) -> Optional[List[DivisionTreeNode]]:
+    node: DivisionNode,
+    rule: Collect,
+    collecting_nodes: List[DivisionNode]
+) -> Optional[List[DivisionNode]]:
 
     if node.children == None or node in collecting_nodes:
         return None
@@ -17,6 +17,8 @@ def collect_nodes(
     collected_nodes = []
 
     for child in node.children:
+        if not isinstance(child, DivisionNode):
+            continue
         if child.title == rule.parent_title_matches:
             collected_nodes.extend(child.children)
         else:

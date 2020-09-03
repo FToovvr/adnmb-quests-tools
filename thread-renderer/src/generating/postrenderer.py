@@ -27,10 +27,10 @@ class PostRenderer:
             d.update(kwargs)
             return PostRenderer.Options(**d)
 
-    def render(self, post, options: "PostRenderer.Options") -> str:
+    def render(self, post: Post, options: "PostRenderer.Options") -> str:
         return "\n".join(self.__render_lines(post, options, nest_level=0)) + "\n"
 
-    def __render_lines(self, post, options: "PostRenderer.Options", nest_level: int) -> str:
+    def __render_lines(self, post: Post, options: "PostRenderer.Options", nest_level: int) -> str:
 
         lines = []
 

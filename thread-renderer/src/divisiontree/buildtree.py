@@ -1,10 +1,12 @@
 from dataclasses import dataclass, field
 from typing import OrderedDict, List, Dict, Optional, Tuple
 
-from ..configloader import DivisionsConfiguration, DivisionRule, DivisionType, MatchUntil, MatchOnly, Collecting
+from ..configloader import DivisionsConfiguration, DivisionRule, DivisionType, MatchUntil, MatchOnly, Collect, Include
 from ..thread import Thread, Post
 
-from .divisiontree import DivisionTreeNode, PostInNode
+from .node import Node
+from .divisionnode import DivisionNode, PostInNode
+from .includenode import IncludeNode
 from .collectnodes import collect_nodes
 from .exceptions import UnknownMatchRule, OnlyMatchRuleHasChildrenException
 from .utils import githubize_heading_name
@@ -15,7 +17,7 @@ class TreeBuilder:
     post_pool: OrderedDict[int, Post]
     post_ids: List[int]
     post_i: int
-    post_claims: Dict[int, DivisionTreeNode]
+    post_claims: Dict[int, DivisionNode]
 
     div_cfg: DivisionsConfiguration
 
@@ -23,7 +25,7 @@ class TreeBuilder:
 
     has_been_built = False
 
-    collecting_nodes: List[DivisionTreeNode] = field(default_factory=list)
+    collecting_nodes: List[DivisionNode] = field(default_factory=list)
 
     def __init__(self, post_pool: OrderedDict[int, Post], div_cfg: DivisionsConfiguration):
         self.post_pool = post_pool
@@ -44,11 +46,11 @@ class TreeBuilder:
         )
         return (builder.__build_root(), builder.post_claims)
 
-    def __build_root(self) -> DivisionTreeNode:
+    def __build_root(self) -> DivisionNode:
         assert(not self.has_been_built)
         self.has_been_built = True
 
-        root = DivisionTreeNode(
+        root = DivisionNode(
             parent=None,
             title=self.div_cfg.title,
             title_number_in_parent_file=1,
@@ -67,7 +69,7 @@ class TreeBuilder:
         ), self.div_cfg.division_rules))
 
         for node in self.collecting_nodes:
-            assert(isinstance(node.children, Collecting))
+            assert(isinstance(node.children, Collect))
             node.children = collect_nodes(
                 node=root,
                 rule=node.children,
@@ -79,10 +81,10 @@ class TreeBuilder:
     def __build_node(
         self,
         rule: DivisionRule,
-        parent_node: DivisionTreeNode,
+        parent_node: DivisionNode,
         heading_name_counts: Dict[str, int],
-    ) -> DivisionTreeNode:
-        node = DivisionTreeNode(
+    ) -> Node:
+        node = DivisionNode(
             parent=parent_node,
             title=rule.title,
             title_number_in_parent_file=None,
@@ -136,11 +138,21 @@ class TreeBuilder:
                 else:
                     self.post_claims[post.post_id] = [node]
             node.posts = posts
-        elif isinstance(rule.match_rule, Collecting):
+        elif isinstance(rule.match_rule, Collect):
             assert(rule.post_rules == None)
             assert(rule.children == None or len(rule.children) == 0)
             node.children = rule.match_rule
             self.collecting_nodes.append(node)
+        elif isinstance(rule.match_rule, Include):
+            assert(rule.post_rules == None)
+            assert(rule.children == None or len(rule.children) == 0)
+            # FIXME: 如果这是最后一个第一级分割，「暂未整理」不会被生成
+            return IncludeNode(
+                parent=parent_node,
+                title=node.title,
+                title_number_in_parent_file=node.title_number_in_parent_file,
+                file_path=rule.match_rule.file_path,
+            )
         elif rule.match_rule == None:
             pass
         else:
@@ -173,9 +185,9 @@ class TreeBuilder:
     def __build_leftover_node(
         self,
         posts: List[PostInNode],
-        parent_node: DivisionTreeNode,
+        parent_node: DivisionNode,
         heading_name_counts: Dict[str, int],
-    ) -> DivisionTreeNode:
+    ) -> DivisionNode:
         posts = list(filter(
             lambda post_in_node: self.post_pool[post_in_node.post_id].user_id in self.div_cfg.po_cookies, posts))
 
@@ -187,7 +199,7 @@ class TreeBuilder:
             )
             self.remain_post = None
 
-        node = DivisionTreeNode(
+        node = DivisionNode(
             parent=parent_node,
             title="尚未整理",
             title_number_in_parent_file=None,

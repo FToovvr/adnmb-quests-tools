@@ -9,7 +9,7 @@ from pathlib import Path
 
 import yaml
 
-from .matchrule import MatchRule, MatchUntil, MatchOnly, Collecting
+from .matchrule import MatchRule, MatchUntil, MatchOnly, Collect, Include
 from .postrules import PostRules, PostRule
 
 
@@ -180,12 +180,20 @@ class DivisionRule:
                 match_rule = MatchOnly(ids=[only])
             else:  # List[int]
                 match_rule = MatchOnly(ids=only)
-        if "collecting" in obj:
+        if "collect" in obj:
             if match_rule != None:
                 raise "multiple match rules not allowed"
-            collecting = obj["collecting"]
-            match_rule = Collecting(
-                parent_title_matches=collecting["parent-title-matches"])
+            collect = obj["collect"]
+            match_rule = Collect(
+                parent_title_matches=collect["parent-title-matches"],
+            )
+        if "include" in obj:
+            if match_rule != None:
+                raise "multiple match rules not allowed"
+            include = obj["include"]
+            match_rule = Include(
+                file_path=include["file"],
+            )
 
         post_rules = obj.get("post-rules", None)
         if post_rules != None:

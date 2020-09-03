@@ -1,9 +1,10 @@
 from ..configloader import DivisionType
-from ..divisiontree import DivisionTreeNode
+from ..divisiontree import Node, DivisionNode
 
 
-def render_breadcrumb(node: DivisionTreeNode) -> str:
-    assert(node.type in (None, DivisionType.FILE))
+def render_breadcrumb(node: Node) -> str:
+    assert(not isinstance(node, DivisionNode)
+           or node.type in (None, DivisionType.FILE))
 
     items = []
     for node_in_path in list(node.path)[:-1]:

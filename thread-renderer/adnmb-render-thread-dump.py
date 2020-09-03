@@ -76,6 +76,7 @@ def main(args: List[str]):
         output_folder_path=args.output_folder_path,
         post_pool=post_pool,
         div_cfg=div_cfg,
+        div_cfg_folder_path=args.div_cfg_path.parent,
         division_tree=tree,
         post_claims=post_claims,
     )
