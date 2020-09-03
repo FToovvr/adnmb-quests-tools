@@ -237,7 +237,12 @@ def fetch_page_range_back_to_front(
     # 由于外层每一轮是从前向后的顺序进行处理，
     # 当本轮页数超过守门页时，可以让下一轮有效检测「卡99」
     if pages != None:
-        current_round_max_seen_post_id = int(pages[0].replies[-1]["id"])
+        if len(pages[0].replies) != 0:
+            current_round_max_seen_post_id = int(pages[0].replies[-1]["id"])
+        elif len(pages) > 1:
+            current_round_max_seen_post_id = int(pages[1].replies[-1]["id"])
+        else:
+            current_round_max_seen_post_id = None
     else:
         current_round_max_seen_post_id = None
 

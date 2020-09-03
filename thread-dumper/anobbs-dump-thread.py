@@ -75,6 +75,8 @@ def main(args: List[str]):
         pages_folder_path.mkdir(parents=True)
         page_ranges = [(1, None)]
 
+    logging.info(f"所有将要转存的页面的范围：{page_ranges}")
+
     needs_extra_round, should_abort = False, False
     max_seen_id = None
     reply_count = None

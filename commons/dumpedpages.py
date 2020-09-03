@@ -100,6 +100,11 @@ def get_page_ranges_for_dumping(
         if page_info.number != 1 and last_page_number == None:
             # 从第一页开始断页
             ranges.append((1, page_info.number-1))
+        elif page_info.status != PageInfo.Status.COMPLETE:
+            if page_info.number == 1:
+                ranges.append((1, 1))
+            else:
+                ranges.append((page_info.number-1, page_info.number))
         elif page_info.number - 1 != last_page_number:
             # 断页
             if page_info.status != PageInfo.Status.INCOMPLETE:
@@ -114,25 +119,17 @@ def get_page_ranges_for_dumping(
 
     ranges.append((last_page_number or 1, None))
 
-    return ranges
+    merged_ranges = []
 
-    # new_ranges = []
-    # for range in ranges:
-    #     if len(new_ranges) == 0:
-    #         new_ranges.append(range)
-    #         continue
-    #     if range[0] <= new_ranges[-1][1]:
-    #         new_ranges[-1][1] = range[1]
-    #     else:
-    #         new_ranges.append(range)
+    for range in ranges:
+        if len(merged_ranges) == 0:
+            merged_ranges.append(range)
+        elif merged_ranges[-1][1] >= range[0]:
+            merged_ranges[-1] = (merged_ranges[-1][0], range[1])
+        else:
+            merged_ranges.append(range)
 
-    # last_upper = new_ranges[-1][1]
-
-    # if new_ranges[-1][0] <= gakekeeper_page_number and last_upper > gakekeeper_page_number:
-    #     new_ranges[-1][1] = gakekeeper_page_number
-    #     new_ranges.append((gakekeeper_page_number+1, last_upper))
-
-    # return new_ranges
+    return merged_ranges
 
 
 def get_page_name_and_status(pages_folder_path: Path, page_number: int) -> Optional[str, PageInfo.Status]:
