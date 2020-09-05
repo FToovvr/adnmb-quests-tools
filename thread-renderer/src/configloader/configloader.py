@@ -11,6 +11,7 @@ import yaml
 
 from .matchrule import MatchRule, MatchUntil, MatchOnly, Collect, Include
 from .postrules import PostRules, PostRule
+from .utils import flatten_list
 
 
 @dataclass(frozen=True)
@@ -158,15 +159,7 @@ class DivisionRule:
                 elif isinstance(excluded, list):
                     # 支持将嵌套扁平化
                     # 用于 workaround vscode 的 yaml 插件在格式化过长的数组时，会让每个元素占用一行
-                    def flatten(the_list: List[Any]):
-                        result = []
-                        for elem in the_list:
-                            if isinstance(elem, list):
-                                result.extend(flatten(elem))
-                            else:
-                                result.append(elem)
-                        return result
-                    excluded = flatten(excluded)
+                    excluded = flatten_list(excluded)
                 match_rule = MatchUntil(
                     id=until["id"],
                     text_until=until.get("text-until", None),

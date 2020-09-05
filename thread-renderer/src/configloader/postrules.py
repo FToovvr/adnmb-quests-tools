@@ -2,6 +2,8 @@ from __future__ import annotations
 from typing import Optional, Union, List, Dict, Any
 from dataclasses import dataclass
 
+from .utils import flatten_list
+
 
 PostRules = Optional[Dict[int, "PostRule"]]
 
@@ -23,6 +25,8 @@ class PostRule:
         appended = obj.get("appended", None)
         if type(appended) is int:
             appended = [appended]
+        elif isinstance(appended, list):
+            appended = flatten_list(appended)
 
         return PostRule(
             expand_quote_links=expand_quote_links,
