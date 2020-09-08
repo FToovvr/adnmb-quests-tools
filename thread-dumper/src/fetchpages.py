@@ -4,7 +4,8 @@ from dataclasses import dataclass
 import logging
 from pathlib import Path
 
-from .anobbsclient import AnoBBSClient
+import anobbsclient
+
 from .exceptions import NoUserhashException, InvaildUserhashException, GatekeepedException, UnreachableLowerBoundPostIDException, UnexpectedLowerBoundPostIDException
 
 
@@ -16,7 +17,7 @@ class Page:
 
 
 def __fetch_pages_back_to_front(
-    client: AnoBBSClient,
+    client: anobbsclient.Client,
     thread_id: int,
     from_upper_bound_page_number: int,
     to_lower_bound_page_number: int,
@@ -29,7 +30,7 @@ def __fetch_pages_back_to_front(
 
     Parameters
     ----------
-    client : AnoBBSClient
+    client : anobbsclient.Client
         获取页面用的客户端。
 
     thread_id : int
@@ -82,19 +83,18 @@ def __fetch_pages_back_to_front(
     for page_number in reversed(range(1, from_upper_bound_page_number + 1)):
 
         # 检测是否需要登录，如果需要登陆但未登陆，抛异常
-        needs_login = page_number > gatekeeper_page_number
-        if needs_login and not client.has_logged_in():
-            raise NoUserhashException()
+        # TODO: 公开化 anobbsclient.Client 的 check_login 方法
+        needs_login = client._Client__check_login(page=page_number)
 
         page = client.get_thread(
-            thread_id, page=page_number, with_login=needs_login)
-        thread_body = OrderedDict(page)
+            thread_id, page=page_number, for_analysis=True)
+        thread_body = OrderedDict(page.body)
         thread_body.pop("replys")
         if lower_bound_post_id != None:
             lower_bound_index = find_first_index(
-                reversed(page["replys"]), lambda post: int(post["id"]) <= lower_bound_post_id)
+                reversed(page.replies), lambda post: int(post["id"]) <= lower_bound_post_id)
             if lower_bound_index != None:
-                lower_bound_index = len(page["replys"]) - 1 - lower_bound_index
+                lower_bound_index = len(page.replies) - 1 - lower_bound_index
         else:
             lower_bound_index = None
         if lower_bound_index != None:
@@ -110,10 +110,10 @@ def __fetch_pages_back_to_front(
                     )
                 raise UnexpectedLowerBoundPostIDException(
                     page_number, to_lower_bound_page_number, lower_bound_post_id)
-            if int(page["replys"][lower_bound_index]["id"]) == lower_bound_post_id:
-                new_posts = page["replys"][lower_bound_index+1:]
+            if int(page.replies[lower_bound_index]["id"]) == lower_bound_post_id:
+                new_posts = page.replies[lower_bound_index+1:]
             else:
-                new_posts = page["replys"]
+                new_posts = page.replies
 
             yield Page(
                 thread_body=thread_body,
@@ -123,24 +123,24 @@ def __fetch_pages_back_to_front(
             return
 
         if needs_login:
-            if int(page["replys"][0]["id"]) <= gatekeeper_post_id:
+            if int(page.replies[0]["id"]) <= gatekeeper_post_id:
                 # 作为「守门页」后的页面，有串的串号比「之前获取到的「守门页」中最大的串号」要小，代表「卡99」了。
                 # 但如果「获取「守门页」最大串号」与「获取当前页」期间，「守门页」或之前连抽了19串或以上，即使「卡99」了也无法发现。
                 # 由于间隔越长，连抽19串的可能越大，因此应该在每一轮转存前都获取一次「守门串号」。
                 # 由于每一轮从第二页之后都可以用备用方案，之后便不成问题
                 raise GatekeepedException(
                     "gatekeeper_post_id", page_number, gatekeeper_post_id)
-            if previous_page_min_post_id != None and int(page["replys"][0]["id"]) >= previous_page_min_post_id:
+            if previous_page_min_post_id != None and int(page.replies[0]["id"]) >= previous_page_min_post_id:
                 # 新获取的前一页没有串的串号比旧的后一页要小，要不然就是两页获取期间连抽了19串以上，要不然就是卡99了。
                 # 鉴于前者的可能性应该不大，这里便忽略此可能，判定为卡99
                 raise GatekeepedException(
                     "previous_page_min_post_id", page_number, previous_page_min_post_id)
-        previous_page_min_post_id = int(page["replys"][0]["id"])
+        previous_page_min_post_id = int(page.replies[0]["id"])
 
         yield Page(
             thread_body=thread_body,
             page_number=page_number,
-            replies=page["replys"],
+            replies=page.replies,
         )
 
     # 过了第一页
@@ -160,7 +160,7 @@ def find_first_index(iter: Iterable[Any], where: Callable[[Any], bool]) -> Optio
 
 
 def fetch_page_range_back_to_front(
-    client: AnoBBSClient,
+    client: anobbsclient.Client,
     thread_id: int,
     from_upper_bound_page_number: int,
     to_lower_bound_page_number: int,

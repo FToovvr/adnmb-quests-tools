@@ -11,7 +11,8 @@ import argparse
 from pathlib import Path
 import json
 
-from src.anobbsclient import AnoBBSClient
+import anobbsclient
+
 from src.fetchpages import fetch_page_range_back_to_front
 from src.dumppages import dump_page_range_back_to_front
 
@@ -23,11 +24,18 @@ USER_AGENT = os.environ["ANOBBS_CLIENT_ENVIRON"]
 APPID = os.environ["ANOBBS_CLIENT_APPID"]
 USERHASH = os.environ.get("ANOBBS_USERHASH", None)
 
-client = AnoBBSClient(
-    appid=APPID,
+client = anobbsclient.Client(
     user_agent=USER_AGENT,
     host=HOST,
-    userhash=USERHASH,
+    appid=APPID,
+    default_request_options={
+        "user_cookie": anobbsclient.UserCookie(userhash=USERHASH),
+        "login_policy": "when_required",
+        "gatekeeper_page_number": 99,
+        "uses_luwei_cookie_format": {
+            "expires": "Friday,24-Jan-2027 16:24:36 GMT",
+        },
+    },
 )
 
 
@@ -46,8 +54,8 @@ def main(args: List[str]):
                 f'指定的串号 {args.thread_id} 与先前转存生成的 `thread.json` 中的串号 {dumped_thread_id} 不一致，将终止')
             exit(1)
 
-    first_page = client.get_thread(args.thread_id, page=1, with_login=False)
-    page_count = (int(first_page["replyCount"]) - 1) // 19 + 1
+    first_page = client.get_thread(args.thread_id, page=1, for_analysis=True)
+    page_count = (int(first_page.body["replyCount"]) - 1) // 19 + 1
 
     if args.dump_folder_path.exists():
         # # 旧转存文件夹存在，检查是否需要更新
@@ -90,16 +98,16 @@ def main(args: List[str]):
             else:
                 end_page = page_count
         if end_page > 99:
-            if not client.has_logged_in():
+            if not client.has_cookie():
                 logging.warning("守门页后仍有待转存页面，但由于尚未登陆，无法获取。将结束")
                 should_abort = True
                 break
             if max_seen_id == None:
                 page99 = client.get_thread(
                     args.thread_id, page=99,
-                    with_login=False,
+                    for_analysis=True,
                 )
-                max_seen_id = int(page99["replys"][-1]["id"])
+                max_seen_id = int(page99.replies[-1]["id"])
         (max_seen_id, should_abort, reply_count) = dump_page_range_back_to_front(
             dump_folder_path=args.dump_folder_path,
             client=client,
@@ -115,9 +123,9 @@ def main(args: List[str]):
         if reply_count == None:
             page99 = client.get_thread(
                 args.thread_id, page=99,
-                with_login=False,
+                for_analysis=True,
             )
-            reply_count = int(page99["replyCount"])
+            reply_count = int(page99.body["replyCount"])
 
         dump_page_range_back_to_front(
             dump_folder_path=args.dump_folder_path,

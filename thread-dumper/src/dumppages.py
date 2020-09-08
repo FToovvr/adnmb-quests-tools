@@ -5,7 +5,8 @@ import shutil
 import json
 import os
 
-from .anobbsclient import AnoBBSClient
+import anobbsclient
+
 from .fetchpages import fetch_page_range_back_to_front
 
 
@@ -16,7 +17,7 @@ from dumpedpages import PageInfo, get_page_name_and_status  # noqa: E402
 
 def dump_page_range_back_to_front(
     dump_folder_path: Path,
-    client: AnoBBSClient,
+    client: anobbsclient.Client,
     thread_id: int,
     from_upper_bound_page_number: int,
     to_lower_bound_page_number: int,
