@@ -82,9 +82,7 @@ def __fetch_pages_back_to_front(
 
     for page_number in reversed(range(1, from_upper_bound_page_number + 1)):
 
-        # 检测是否需要登录，如果需要登陆但未登陆，抛异常
-        # TODO: 公开化 anobbsclient.Client 的 check_login 方法
-        needs_login = client._Client__check_login(page=page_number)
+        needs_login = client.page_requires_login(page=page_number)
 
         page = client.get_thread(
             thread_id, page=page_number, for_analysis=True)
