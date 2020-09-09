@@ -92,12 +92,11 @@ def dump_page_range_back_to_front(
         if previous_name != None:
             os.remove(tmp_path)
 
-    thread_body = pages[-1].thread_body.raw_copy()
-    reply_count = int(thread_body["replyCount"])
-    thread_body.pop("replyCount")
-    thread_body.pop("replys")
+    thread_body = pages[-1].thread_body
+    reply_count = thread_body.total_reply_count
     with open(dump_folder_path / "thread.json", "w+") as thread_file:
-        json.dump(thread_body, thread_file, indent=2, ensure_ascii=False)
+        json.dump(thread_body.raw_copy(keeps_reply_count=False),
+                  thread_file, indent=2, ensure_ascii=False)
 
     return current_round_max_seen_post_id, aborted, reply_count
 

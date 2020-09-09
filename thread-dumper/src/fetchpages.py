@@ -11,7 +11,7 @@ from .exceptions import NoUserhashException, InvaildUserhashException, Gatekeepe
 
 @dataclass
 class Page:
-    thread_body: anobbsclient.Thread
+    thread_body: anobbsclient.ThreadBody
     page_number: int
     replies: List[anobbsclient.Post]
 
@@ -112,7 +112,7 @@ def __fetch_pages_back_to_front(
                 new_posts = page.replies
 
             yield Page(
-                thread_body=page,
+                thread_body=page.body,
                 page_number=to_lower_bound_page_number,
                 replies=new_posts,
             )
