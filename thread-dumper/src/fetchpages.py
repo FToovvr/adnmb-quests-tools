@@ -11,9 +11,9 @@ from .exceptions import NoUserhashException, InvaildUserhashException, Gatekeepe
 
 @dataclass
 class Page:
-    thread_body: OrderedDict[str, Any]
+    thread_body: anobbsclient.Thread
     page_number: int
-    replies: List[OrderedDict[str, Any]]
+    replies: List[anobbsclient.Post]
 
 
 def __fetch_pages_back_to_front(
@@ -82,15 +82,13 @@ def __fetch_pages_back_to_front(
 
     for page_number in reversed(range(1, from_upper_bound_page_number + 1)):
 
-        needs_login = client.page_requires_login(page=page_number)
+        needs_login = client.thread_page_requires_login(page=page_number)
 
-        page = client.get_thread(
+        (page, _) = client.get_thread_page(
             thread_id, page=page_number, for_analysis=True)
-        thread_body = OrderedDict(page.body)
-        thread_body.pop("replys")
         if lower_bound_post_id != None:
             lower_bound_index = find_first_index(
-                reversed(page.replies), lambda post: int(post["id"]) <= lower_bound_post_id)
+                reversed(page.replies), lambda post: int(post.id) <= lower_bound_post_id)
             if lower_bound_index != None:
                 lower_bound_index = len(page.replies) - 1 - lower_bound_index
         else:
@@ -108,35 +106,35 @@ def __fetch_pages_back_to_front(
                     )
                 raise UnexpectedLowerBoundPostIDException(
                     page_number, to_lower_bound_page_number, lower_bound_post_id)
-            if int(page.replies[lower_bound_index]["id"]) == lower_bound_post_id:
+            if int(page.replies[lower_bound_index].id) == lower_bound_post_id:
                 new_posts = page.replies[lower_bound_index+1:]
             else:
                 new_posts = page.replies
 
             yield Page(
-                thread_body=thread_body,
+                thread_body=page,
                 page_number=to_lower_bound_page_number,
                 replies=new_posts,
             )
             return
 
         if needs_login:
-            if int(page.replies[0]["id"]) <= gatekeeper_post_id:
+            if int(page.replies[0].id) <= gatekeeper_post_id:
                 # 作为「守门页」后的页面，有串的串号比「之前获取到的「守门页」中最大的串号」要小，代表「卡99」了。
                 # 但如果「获取「守门页」最大串号」与「获取当前页」期间，「守门页」或之前连抽了19串或以上，即使「卡99」了也无法发现。
                 # 由于间隔越长，连抽19串的可能越大，因此应该在每一轮转存前都获取一次「守门串号」。
                 # 由于每一轮从第二页之后都可以用备用方案，之后便不成问题
                 raise GatekeepedException(
                     "gatekeeper_post_id", page_number, gatekeeper_post_id)
-            if previous_page_min_post_id != None and int(page.replies[0]["id"]) >= previous_page_min_post_id:
+            if previous_page_min_post_id != None and int(page.replies[0].id) >= previous_page_min_post_id:
                 # 新获取的前一页没有串的串号比旧的后一页要小，要不然就是两页获取期间连抽了19串以上，要不然就是卡99了。
                 # 鉴于前者的可能性应该不大，这里便忽略此可能，判定为卡99
                 raise GatekeepedException(
                     "previous_page_min_post_id", page_number, previous_page_min_post_id)
-        previous_page_min_post_id = int(page.replies[0]["id"])
+        previous_page_min_post_id = int(page.replies[0].id)
 
         yield Page(
-            thread_body=thread_body,
+            thread_body=page,
             page_number=page_number,
             replies=page.replies,
         )
@@ -236,9 +234,9 @@ def fetch_page_range_back_to_front(
     # 当本轮页数超过守门页时，可以让下一轮有效检测「卡99」
     if pages != None:
         if len(pages[0].replies) != 0:
-            current_round_max_seen_post_id = int(pages[0].replies[-1]["id"])
+            current_round_max_seen_post_id = int(pages[0].replies[-1].id)
         elif len(pages) > 1:
-            current_round_max_seen_post_id = int(pages[1].replies[-1]["id"])
+            current_round_max_seen_post_id = int(pages[1].replies[-1].id)
         else:
             current_round_max_seen_post_id = None
     else:

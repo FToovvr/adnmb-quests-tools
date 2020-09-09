@@ -70,7 +70,8 @@ def dump_page_range_back_to_front(
         if previous_name != None:
             previous_page_path = pages_folder_path / previous_name
             with open(previous_page_path) as previous_page_file:
-                previous_page_replies = json.load(previous_page_file)
+                previous_page_replies = list(
+                    map(lambda post: anobbsclient.Post(post), json.load(previous_page_file)))
                 current_page_replies = merge_posts(
                     previous_page_replies, current_page_replies)
 
@@ -85,15 +86,16 @@ def dump_page_range_back_to_front(
             current_name = f"{page.page_number}.json"
 
         with open(pages_folder_path / current_name, "w+") as current_file:
-            json.dump(current_page_replies, current_file,
+            json.dump(list(map(lambda post: post.raw_copy(), current_page_replies)), current_file,
                       indent=2, ensure_ascii=False)
 
         if previous_name != None:
             os.remove(tmp_path)
 
-    thread_body = pages[-1].thread_body
+    thread_body = pages[-1].thread_body.raw_copy()
     reply_count = int(thread_body["replyCount"])
     thread_body.pop("replyCount")
+    thread_body.pop("replys")
     with open(dump_folder_path / "thread.json", "w+") as thread_file:
         json.dump(thread_body, thread_file, indent=2, ensure_ascii=False)
 
@@ -116,10 +118,10 @@ def get_lower_bound_post_id(pages_folder_path: Path, page_number: int) -> int:
         return int(posts[-1]["id"])
 
 
-def merge_posts(a: List[OrderedDict[str, Any]], b: List[OrderedDict[str, Any]]):
-    a = {int(post["id"]): post for post in a}
-    b = {int(post["id"]): post for post in b}
+def merge_posts(a: List[anobbsclient.Post], b: List[anobbsclient.Post]):
+    a = {int(post.id): post for post in a}
+    b = {int(post.id): post for post in b}
     a.update(b)
     a = [post for (_, post) in a.items()]
-    a = sorted(a, key=lambda post: int(post["id"]))
+    a = sorted(a, key=lambda post: int(post.id))
     return a

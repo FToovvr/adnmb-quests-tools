@@ -54,23 +54,11 @@ def main(args: List[str]):
                 f'指定的串号 {args.thread_id} 与先前转存生成的 `thread.json` 中的串号 {dumped_thread_id} 不一致，将终止')
             exit(1)
 
-    first_page = client.get_thread(args.thread_id, page=1, for_analysis=True)
-    page_count = (int(first_page.body["replyCount"]) - 1) // 19 + 1
+    (first_page, _) = client.get_thread_page(
+        args.thread_id, page=1, for_analysis=True)
+    page_count = (int(first_page.total_reply_count) - 1) // 19 + 1
 
     if args.dump_folder_path.exists():
-        # # 旧转存文件夹存在，检查是否需要更新
-        # trace_file_path = args.dump_folder_path / ".trace.json"
-        # with open(trace_file_path) as trace_file:
-        #     trace = json.load(trace_file)
-        # # 如果不登陆来查看99页后的内容，应该就只能这样了。
-        # # 如果在脚本两次执行间正好删除的串数和增加的串数一致，就会以为串没有发生变化。
-        # # 不过这只是理论上可能出现，这里就直接忽视掉这种可能了。
-        # # FIXME: 如果没有新回复，中途退出后恢复转存会因为这里而退出。
-        # # 应该移到页面范围上界为None的时候检测
-        # if int(first_page["replyCount"]) == trace["known_reply_count"]:
-        #     logging.info("一切似乎已经就绪，将直接退出")
-        #     return
-
         # 旧转存文件夹存在，检查旧文件夹来找出之前尚未完成的页数范围
         page_info_list = get_page_info_list(
             dump_folder_path=args.dump_folder_path)
@@ -103,11 +91,11 @@ def main(args: List[str]):
                 should_abort = True
                 break
             if max_seen_id == None:
-                page99 = client.get_thread(
+                (page99, _) = client.get_thread_page(
                     args.thread_id, page=99,
                     for_analysis=True,
                 )
-                max_seen_id = int(page99.replies[-1]["id"])
+                max_seen_id = int(page99.replies[-1].id)
         (max_seen_id, should_abort, reply_count) = dump_page_range_back_to_front(
             dump_folder_path=args.dump_folder_path,
             client=client,
@@ -121,11 +109,11 @@ def main(args: List[str]):
             break
     if (not should_abort) and needs_extra_round:
         if reply_count == None:
-            page99 = client.get_thread(
+            (page99, _) = client.get_thread_page(
                 args.thread_id, page=99,
                 for_analysis=True,
             )
-            reply_count = int(page99.body["replyCount"])
+            reply_count = int(page99.total_reply_count)
 
         dump_page_range_back_to_front(
             dump_folder_path=args.dump_folder_path,
