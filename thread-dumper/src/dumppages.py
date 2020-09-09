@@ -21,7 +21,6 @@ def dump_page_range_back_to_front(
     thread_id: int,
     from_upper_bound_page_number: int,
     to_lower_bound_page_number: int,
-    gatekeeper_page_number: int,
     gatekeeper_post_id: Optional[int]
 ) -> Tuple[Optional[int], bool, Optional[int]]:
     """
@@ -51,7 +50,6 @@ def dump_page_range_back_to_front(
         from_upper_bound_page_number=from_upper_bound_page_number,
         to_lower_bound_page_number=to_lower_bound_page_number,
         lower_bound_post_id=lower_bound_post_id,
-        gatekeeper_page_number=gatekeeper_page_number,
         gatekeeper_post_id=gatekeeper_post_id,
     )
 

@@ -31,7 +31,7 @@ client = anobbsclient.Client(
     default_request_options={
         "user_cookie": anobbsclient.UserCookie(userhash=USERHASH),
         "login_policy": "when_required",
-        "gatekeeper_page_number": 99,
+        "gatekeeper_page_number": 100,
         "uses_luwei_cookie_format": {
             "expires": "Friday,24-Jan-2027 16:24:36 GMT",
         },
@@ -62,7 +62,7 @@ def main(args: List[str]):
         # 旧转存文件夹存在，检查旧文件夹来找出之前尚未完成的页数范围
         page_info_list = get_page_info_list(
             dump_folder_path=args.dump_folder_path)
-        page_ranges = get_page_ranges_for_dumping(page_info_list, 99)
+        page_ranges = get_page_ranges_for_dumping(page_info_list, 100)
 
     pages_folder_path = args.dump_folder_path / "pages"
 
@@ -80,40 +80,39 @@ def main(args: List[str]):
         logging.info(f"第{i+1}/{len(page_ranges)}轮，范围：{page_range}")
         (start_page, end_page) = page_range
         if end_page == None:
-            if start_page < 99 and page_count > 99:
+            if start_page < 100 and page_count > 100:
                 needs_extra_round = True
-                end_page = 99
+                end_page = 100
             else:
                 end_page = page_count
-        if end_page > 99:
+        if end_page > 100:
             if not client.has_cookie():
                 logging.warning("守门页后仍有待转存页面，但由于尚未登陆，无法获取。将结束")
                 should_abort = True
                 break
             if max_seen_id == None:
-                (page99, _) = client.get_thread_page(
-                    args.thread_id, page=99,
+                (page100, _) = client.get_thread_page(
+                    args.thread_id, page=100,
                     for_analysis=True,
                 )
-                max_seen_id = int(page99.replies[-1].id)
+                max_seen_id = int(page100.replies[-1].id)
         (max_seen_id, should_abort, reply_count) = dump_page_range_back_to_front(
             dump_folder_path=args.dump_folder_path,
             client=client,
             thread_id=args.thread_id,
             from_upper_bound_page_number=end_page,
             to_lower_bound_page_number=start_page,
-            gatekeeper_page_number=99,
             gatekeeper_post_id=max_seen_id,
         )
         if should_abort:
             break
     if (not should_abort) and needs_extra_round:
         if reply_count == None:
-            (page99, _) = client.get_thread_page(
-                args.thread_id, page=99,
+            (page100, _) = client.get_thread_page(
+                args.thread_id, page=100,
                 for_analysis=True,
             )
-            reply_count = int(page99.total_reply_count)
+            reply_count = int(page100.total_reply_count)
 
         dump_page_range_back_to_front(
             dump_folder_path=args.dump_folder_path,
@@ -121,7 +120,6 @@ def main(args: List[str]):
             thread_id=args.thread_id,
             from_upper_bound_page_number=(reply_count-1)//19+1,
             to_lower_bound_page_number=100,
-            gatekeeper_page_number=99,
             gatekeeper_post_id=max_seen_id
         )
 
