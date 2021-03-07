@@ -104,7 +104,8 @@ def get_page_ranges_for_dumping(
             if page_info.number == 1:
                 ranges.append((1, 1))
             else:
-                ranges.append((page_info.number-1, page_info.number))
+                # ranges.append((page_info.number-1, page_info.number))
+                ranges.append((last_page_number + 1, page_info.number))
         elif page_info.number - 1 != last_page_number:
             # 断页
             if page_info.status != PageInfo.Status.INCOMPLETE:
