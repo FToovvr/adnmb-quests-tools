@@ -1,4 +1,4 @@
-anobbs-api-wrapper-py==0.0.0.dev14
+anobbs-client==0.0.0.dev16
 certifi==2020.6.20
 chardet==3.0.4
 idna==2.10

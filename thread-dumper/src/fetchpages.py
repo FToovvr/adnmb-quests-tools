@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 
 import anobbsclient
-from anobbsclient.walk import walkthread
+from anobbsclient.walk import create_walker, ReversalThreadWalkTarget
 
 
 @dataclass
@@ -47,15 +47,15 @@ def fetch_page_range_back_to_front(
     pages: List[Page] = []
 
     try:
-        for (n, page, _) in walkthread.ThreadPageReverseWalker(
-            client=client,
-            thread_id=thread_id,
-            upper_bound_page=from_upper_bound_page_number,
-            end_condition=walkthread.LowerBoundPageEndCondition(
-                page=to_lower_bound_page_number,
-                page_seen_max_post_id=lower_bound_post_id,
+        for (n, page, _) in create_walker(
+            target=ReversalThreadWalkTarget(
+                thread_id=thread_id,
+                start_page_number=from_upper_bound_page_number,
+                gatekeeper_post_id=gatekeeper_post_id,
+                stop_before_post_id=lower_bound_post_id,
+                expected_stop_page_number=to_lower_bound_page_number,
             ),
-            gatekeeper_post_id=gatekeeper_post_id,
+            client=client,
         ):
             msg = f"范围：从第{from_upper_bound_page_number}页至第{to_lower_bound_page_number}页，"
             msg += f"获取处理：第{n}页"
